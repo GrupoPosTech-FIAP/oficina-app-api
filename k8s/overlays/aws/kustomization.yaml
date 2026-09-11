@@ -5,7 +5,7 @@ resources:
 images:
   - name: oficina-api-image
     #aqui ele usa a imagem do ECR, que é o repositório de imagens da AWS
-    newName: 322517093426.dkr.ecr.us-east-1.amazonaws.com/oficina-api
+    newName: ecr.amazonaws.com/oficina-api
     newTag: "1.0"
 
 patches:

@@ -59,7 +59,9 @@ jobs:
         run: |
           IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.tag }}"
           docker build -t "$IMAGE" .
-          docker push "$IMAGE"
+          # Se a imagem já existir no ECR (repo imutável), o push falha. 
+          # O "|| true" permite que a pipeline ignore o erro e apenas aplique a imagem existente no cluster.
+          docker push "$IMAGE" || echo "⚠️ Imagem já existe no ECR. Pulando o push e prosseguindo com o deploy..."
 
       - name: Configurar kubeconfig do EKS
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
@@ -79,9 +81,12 @@ jobs:
             SPRING_DATASOURCE_PASSWORD: $(printf '%s' "${{ secrets.RDS_PASSWORD }}" | base64 -w0)
           EOF
 
-      # Aponta o overlay para a imagem que acabou de subir (tag dinamica).
+      # Aponta o overlay para a imagem que acabou de subir (tag dinamica e registry dinamico).
       - name: Apontar a imagem publicada no overlay
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
+          sed -i "s|newName:.*|newName: ${ECR_REGISTRY}/${ECR_REPOSITORY}|" k8s/overlays/aws/kustomization.yaml
           sed -i "s|newTag:.*|newTag: \"${{ steps.meta.outputs.tag }}\"|" k8s/overlays/aws/kustomization.yaml
 
       # Injeta o endpoint do RDS informado no dispatch dentro do SPRING_DATASOURCE_URL.

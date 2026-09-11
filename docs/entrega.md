@@ -26,8 +26,11 @@ https://miro.com/app/board/uXjVGrnYnzM=/ (Miro)
 https://youtu.be/ErhqqlafBAU
 ```
 
-## Link do repositório
+## Links dos repositórios
 
 ```
-https://github.com/henriquespecian/Tech-Challenge-15SOAT
+https://github.com/GrupoPosTech-FIAP/oficina-app-api
+https://github.com/GrupoPosTech-FIAP/oficina-infra-database
+https://github.com/GrupoPosTech-FIAP/oficina-infra-cluster
+https://github.com/GrupoPosTech-FIAP/oficina-auth-gateway
 ```

@@ -31,26 +31,25 @@ PostgreSQL (via Terraform), imagem no ECR e Service `LoadBalancer` (ELB).
 
 ## 1 — Provisionar a infraestrutura (Terraform)
 
-```bash
-cd infra
-# Crie o terraform.tfvars (está no .gitignore) com a senha do RDS:
-#   db_password = "SuaSenhaDoRds"     (8-128 chars, sem / @ " nem espaço)
-terraform init
-terraform plan
-terraform apply        # ~15-20 min (EKS + RDS são lentos)
-```
+> A infraestrutura foi separada em repositórios dedicados. Provisione na ordem abaixo
+> **antes** de continuar com o deploy da aplicação:
+>
+> 1. **[oficina-infra-cluster](https://github.com/GrupoPosTech-FIAP/oficina-infra-cluster)** — VPC, Subnets, EKS, ECR (~10-15 min)
+> 2. **[oficina-infra-database](https://github.com/GrupoPosTech-FIAP/oficina-infra-database)** — RDS PostgreSQL (~10-15 min)
+>
+> Consulte o README de cada repositório para instruções detalhadas.
 
-> A senha definida aqui em `db_password` é a senha **master do RDS**. Ela precisa
-> ser a mesma usada depois no Secret do Kubernetes (passo 4) e no GitHub Secret
-> `RDS_PASSWORD` (CI/CD) — se divergir, o app não conecta no banco.
+A senha definida no `db_password` do `oficina-infra-database` é a senha **master do RDS**. Ela precisa
+ser a mesma usada depois no Secret do Kubernetes (passo 4) e no GitHub Secret
+`RDS_PASSWORD` (CI/CD) — se divergir, o app não conecta no banco.
 
-Ao terminar, anote os outputs (`terraform output`):
-- `EKS_Cluster_Name` = `eks-oficina-terraform`
-- `Repository_URL`   = URL do ECR
-- `DB_Endpoint`      = host do RDS
+Ao terminar, anote os outputs de cada repositório (`terraform output`):
+- `EKS_Cluster_Name` = `eks-oficina-terraform` (do `oficina-infra-cluster`)
+- `Repository_URL`   = URL do ECR (do `oficina-infra-cluster`)
+- `DB_Endpoint`      = host do RDS (do `oficina-infra-database`)
 
 > ⚠️ Particularidade do Learner Lab: não é possível criar IAM Roles. O Terraform
-> usa a role pré-existente **`LabRole`** (ver `infra/iam-role.tf`).
+> usa a role pré-existente **`LabRole`**.
 
 ## 2 — Conectar o kubectl ao EKS
 
@@ -62,7 +61,7 @@ kubectl get nodes                    # nó(s) devem aparecer como Ready
 
 ## 3 — Publicar a imagem no ECR
 
-> Rode a partir da **raiz do projeto** (onde está o `Dockerfile`), não de dentro de `infra/`.
+> Rode a partir da **raiz do projeto** (onde está o `Dockerfile`).
 > O `docker build` é que **cria** a tag local; o `push` só envia uma tag que já existe —
 > se buildar na pasta errada, o push falha com `tag does not exist`.
 
@@ -148,8 +147,14 @@ Nos demais endpoints, envie o header `Authorization: Bearer <token>`.
 
 ## 7 — Encerrar (evita consumir crédito)
 
+Destrua a infraestrutura na **ordem inversa** do provisionamento:
+
 ```bash
-terraform destroy      # apaga EKS, RDS, ECR, VPC etc.
+# 1. No repo oficina-infra-database
+terraform destroy -var="infra_state_bucket=oficina-tfstate-SEU-NOME" -var="db_password=SuaSenha"
+
+# 2. No repo oficina-infra-cluster
+terraform destroy
 ```
 E clique em **End Lab** no Learner Lab.
 

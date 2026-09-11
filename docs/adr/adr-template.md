@@ -1,19 +1,22 @@
-# Título: Nome claro da proposta
+# NNN — Título claro da decisão
+
+**Status:** Aceita | Proposta | Substituída por NNN
+**Data:** YYYY-MM-DD
 
 ## Resumo
-Objetivo da sugestão
+Descrição concisa do que foi decidido e por quê.
 
 ## Problema
-Qual contexto ou dor motivou essa ADR
+Contexto, dor ou requisito que motivou esta decisão.
 
 ## Proposta técnica
-Qual é a ideia sugerida?
+Detalhamento técnico da solução adotada.
 
 ## Impacto esperado
-Quais os ganhos, riscos e restrições?
+Ganhos, riscos e restrições.
 
 ## Alternativas consideradas
-Outras opções discutidas
+Opções avaliadas e motivos da rejeição.
 
-## Pontos em aberto:
-Tópicos que ainda precisam de alinhamento.
+## Pontos em aberto
+Tópicos pendentes de alinhamento.

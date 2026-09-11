@@ -60,11 +60,11 @@ Para Minikube e AWS, ver os guias de execução em [docs/](docs/README.md).
 |---|---|
 | [docs/arquitetura.md](docs/arquitetura.md) | Clean Architecture, módulos, fluxo de dados, stack, PostgreSQL |
 | [docs/execucao-local.md](docs/execucao-local.md) | Rodar localmente (Docker Compose / Minikube) |
-| [docs/deploy-aws.md](docs/deploy-aws.md) | Deploy manual na AWS (EKS + RDS via Terraform) |
-| [docs/acesso-aws-learner-lab.md](docs/acesso-aws-learner-lab.md) | Iniciar o AWS Learner Lab e exportar credenciais |
+| [docs/deploy-aws.md](docs/deploy-aws.md) | Deploy manual na AWS (EKS + RDS via repos de infra) |
 | [docs/cicd-github-actions.md](docs/cicd-github-actions.md) | Deploy automatizado via GitHub Actions |
 | [docs/autenticacao-e-perfis.md](docs/autenticacao-e-perfis.md) | JWT, login e perfis de acesso |
 | [docs/testes-e-qualidade.md](docs/testes-e-qualidade.md) | Testes, Bruno, JaCoCo e SonarQube |
+| [docs/monitoramento-e-observabilidade.md](docs/monitoramento-e-observabilidade.md) | Monitoramento, New Relic, OpenTelemetry, Dashboards e Alertas |
 | [docs/entrega.md](docs/entrega.md) | Dados do grupo e links da entrega |
 
 ## Testes

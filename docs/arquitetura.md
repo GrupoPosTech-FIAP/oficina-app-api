@@ -115,16 +115,3 @@ sequenceDiagram
 1.  **Testabilidade:** Toda a lógica de negócio (`oficina-domain`) e casos de uso (`oficina-application`) podem ser exaustivamente testados usando testes de unidade rápidos sem a necessidade de levantar o contexto do Spring ou banco de dados.
 2.  **Independência de Framework:** Se futuramente a equipe decidir migrar de Spring Boot para Quarkus, Micronaut, ou de banco de dados PostgreSQL para MongoDB, os módulos `oficina-domain` e `oficina-application` permanecerão totalmente intocados.
 3.  **Segregação de Responsabilidades:** Separação rígida entre o modelo de visualização (DTOs), modelo persistente (Entities JPA) e modelo rico de domínio (Entities Puras).
-
----
-
-## Por que PostgreSQL?
-
-PostgreSQL foi a escolha para persistência pelos seguintes motivos:
-
-- **ACID e integridade referencial** — consistência de dados críticos (clientes, veículos, usuários) e *foreign keys* que previnem registros órfãos.
-- **Relacionamentos entre agregados** — constraints validam os vínculos no nível do banco.
-- **Soft deletes eficientes** — índices compostos aceleram queries que filtram por `ativo = true`.
-- **Integração com Spring Boot + JPA/Hibernate** — suporte nativo a tipos avançados (UUID, arrays, JSON) e queries customizadas sem limitações.
-- **Escalabilidade e confiabilidade** — backup, restore e replicação são operações padrão, adequadas ao crescimento dos dados.
-- **Padrão de indústria** — escolha comum em sistemas enterprise, gratuito (open source) e bem documentado.

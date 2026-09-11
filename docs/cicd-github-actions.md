@@ -49,10 +49,15 @@ e `AWS_SESSION_TOKEN` no GitHub com os valores novos.
 > — é a policy que a AWS Academy anexa quando as credenciais são de uma sessão encerrada.
 
 ### 3. Garantir a infra e pegar o endpoint do RDS
+
+A infraestrutura precisa estar provisionada via os repos dedicados:
+
 ```bash
-# exporte as credenciais novas no terminal antes (ver doc do lab)
-cd infra
-terraform apply                      # recria a infra se você tinha destruído
+# No repo oficina-infra-cluster (se ainda não provisionou)
+terraform apply
+
+# No repo oficina-infra-database
+terraform apply -var="infra_state_bucket=oficina-tfstate-SEU-NOME" -var="db_password=SuaSenha"
 terraform output -raw DB_Endpoint    # copie este valor
 ```
 
@@ -129,6 +134,11 @@ kubectl describe pod <pod> | grep -i image:   # tag = SHA do commit deployado
 
 ```bash
 kubectl delete -k k8s/overlays/aws     # remove o Service → derruba o ELB (antes do destroy)
-cd infra && terraform destroy
+
+# Destrua na ordem inversa:
+# 1. No repo oficina-infra-database
+terraform destroy -var="infra_state_bucket=oficina-tfstate-SEU-NOME" -var="db_password=SuaSenha"
+# 2. No repo oficina-infra-cluster
+terraform destroy
 ```
 E clique em **End Lab**.

@@ -13,15 +13,27 @@ on:
       rds_endpoint:
         description: "Endpoint do RDS (rode: terraform output -raw DB_Endpoint)"
         required: true
+
+      # Endpoint do repository ECR, que muda toda vez que a infra é construida ou reconstruida
+      # por conta do LabLearner, sempre criamos e derrubamos a instancia AWS.
+      # Ex.: 322517093426.dkr.ecr.us-east-1.amazonaws.com
+      ecr_repository:
+        description: "Endpoint do ECR (rode: terraform output -raw Repository_URL)"
+        required: true
+
   push:
+    branches:
+      - "rafactoring-k8s-and-terraform"
     tags:
       - "v*"
-
 env:
+  # Variáveis de ambiente 'estáticas'
+  # Pré-definidas nos arquivos de criação da Infra com terraform.
   AWS_REGION: us-east-1
   EKS_CLUSTER: eks-oficina-terraform
-  ECR_REGISTRY: 322517093426.dkr.ecr.us-east-1.amazonaws.com
   ECR_REPOSITORY: oficina-api
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
 
 jobs:
   deploy:
@@ -55,7 +67,7 @@ jobs:
 
       - name: Build e push da imagem
         run: |
-          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:${{ steps.meta.outputs.tag }}"
+          IMAGE="${{ inputs.ecr_repository }}/$ECR_REPOSITORY:${{ steps.meta.outputs.tag }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
@@ -66,16 +78,7 @@ jobs:
       # .gitignore; aqui ele e recriado efemero, so durante o job.
       - name: Gerar Secret a partir dos GitHub Secrets
         run: |
-          cat > k8s/overlays/aws/secret.yaml <<EOF
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: oficina-secret
-          type: Opaque
-          data:
-            JWT_SECRET: $(printf '%s' "${{ secrets.JWT_SECRET }}" | base64 -w0)
-            SPRING_DATASOURCE_PASSWORD: $(printf '%s' "${{ secrets.RDS_PASSWORD }}" | base64 -w0)
-          EOF
+          envsubst < k8s/overlays/aws/secret.example.yaml > k8s/overlays/aws/secret.yaml 
 
       # Aponta o overlay para a imagem que acabou de subir (tag dinamica).
       - name: Apontar a imagem publicada no overlay

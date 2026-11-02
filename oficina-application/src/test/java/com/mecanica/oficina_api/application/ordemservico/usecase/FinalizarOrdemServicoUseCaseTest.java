@@ -10,13 +10,11 @@ import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGat
 import com.mecanica.oficina_api.application.ordemservico.output.NotificacaoCliente;
 import com.mecanica.oficina_api.application.ordemservico.output.TipoNotificacaoCliente;
 import com.mecanica.oficina_api.application.servico.gateway.StatusServicoGateway;
-import com.mecanica.oficina_api.domain.ordemservico.OrcamentoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.ServicoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.StatusServico;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -49,8 +47,7 @@ class FinalizarOrdemServicoUseCaseTest {
 
     @Test
     void deveFinalizarOsENotificarCliente_quandoTodosServicosFinalizados() {
-        OrdemServico os = osComOrcamento(OrdemServicoStatus.EM_EXECUCAO, OrcamentoStatus.APROVADO,
-            List.of(itemServico("serv-1")));
+        OrdemServico os = osSemOrcamento(OrdemServicoStatus.EM_EXECUCAO);
         when(ordemServicoGateway.encontrarOuLancar(OS_ID)).thenReturn(os);
         when(statusServicoGateway.listarServicosPorOS(OS_ID))
             .thenReturn(List.of(servicoFinalizado("ss-1"), servicoFinalizado("ss-2")));
@@ -59,7 +56,7 @@ class FinalizarOrdemServicoUseCaseTest {
         OrdemServico resultado = useCase.executar(OS_ID);
 
         assertThat(resultado.getStatus()).isEqualTo(OrdemServicoStatus.FINALIZADA);
-        assertThat(resultado.getValorFinal()).isEqualTo(BigDecimal.valueOf(100));
+        assertThat(resultado.getValorFinal()).isNull();
         assertThat(resultado.getDataFinal()).isNotNull();
 
         ArgumentCaptor<NotificacaoCliente> captor = ArgumentCaptor.forClass(NotificacaoCliente.class);
@@ -70,8 +67,7 @@ class FinalizarOrdemServicoUseCaseTest {
 
     @Test
     void deveLancarExcecao_quandoHaServicosPendentes() {
-        OrdemServico os = osComOrcamento(OrdemServicoStatus.EM_EXECUCAO, OrcamentoStatus.APROVADO,
-            List.of(itemServico("serv-1")));
+        OrdemServico os = osSemOrcamento(OrdemServicoStatus.EM_EXECUCAO);
         StatusServico pendente = StatusServico.recriar("ss-2", ServicoStatus.INICIADO, OS_ID, "serv-2",
             LocalDateTime.now(), null);
         when(ordemServicoGateway.encontrarOuLancar(OS_ID)).thenReturn(os);

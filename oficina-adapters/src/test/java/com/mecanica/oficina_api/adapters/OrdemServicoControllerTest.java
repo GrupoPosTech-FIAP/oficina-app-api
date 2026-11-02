@@ -4,41 +4,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mecanica.oficina_api.adapters.common.FieldError;
 import com.mecanica.oficina_api.adapters.common.FileUtils;
 import com.mecanica.oficina_api.adapters.common.ValidationErrorResponse;
-import com.mecanica.oficina_api.adapters.security.WebhookTokenValidator;
 import com.mecanica.oficina_api.adapters.web.GlobalExceptionHandler;
 import com.mecanica.oficina_api.adapters.web.OrdemServicoController;
 import com.mecanica.oficina_api.adapters.web.dto.request.CriarOrdemServicoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.GerarOrcamentoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.ItemOrcamentoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.ItemServicoRequest;
+import com.mecanica.oficina_api.adapters.web.dto.request.IniciarExecucaoRequest;
 import com.mecanica.oficina_api.adapters.web.presenter.OrdemServicoPresenter;
-import com.mecanica.oficina_api.application.ordemservico.input.GerarOrcamentoInput;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AguardarOrcamentoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AprovarOrcamentoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AtualizarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.CriarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.EnviarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.EntregarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.GerarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarDiagnosticoOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarExecucaoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarOrdensServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorVeiculoOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarServicosPorOSUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.NegarOrcamentoUseCase;
-import com.mecanica.oficina_api.domain.ordemservico.ItemOrcamento;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.StatusServico;
 
 import java.math.BigDecimal;
 import java.util.List;
-
-import java.util.UUID;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,13 +43,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,12 +63,6 @@ class OrdemServicoControllerTest {
     @Mock private ListarOrdensServicoUseCase listarOrdensServicoUseCase;
     @Mock private ListarPorVeiculoOrdemServicoUseCase listarPorVeiculoOrdemServicoUseCase;
     @Mock private IniciarDiagnosticoOrdemServicoUseCase iniciarDiagnosticoOrdemServicoUseCase;
-    @Mock private GerarOrcamentoUseCase gerarOrcamentoUseCase;
-    @Mock private AtualizarOrcamentoUseCase atualizarOrcamentoUseCase;
-    @Mock private EnviarOrcamentoUseCase enviarOrcamentoUseCase;
-    @Mock private AguardarOrcamentoUseCase aguardarOrcamentoUseCase;
-    @Mock private AprovarOrcamentoUseCase aprovarOrcamentoUseCase;
-    @Mock private NegarOrcamentoUseCase negarOrcamentoUseCase;
     @Mock private IniciarExecucaoUseCase iniciarExecucaoUseCase;
     @Mock private FinalizarOrdemServicoUseCase finalizarOrdemServicoUseCase;
     @Mock private EntregarOrdemServicoUseCase entregarOrdemServicoUseCase;
@@ -94,18 +73,15 @@ class OrdemServicoControllerTest {
     private static final String OS_ID = "os-1";
     private static final String VEICULO_ID = "veiculo-1";
     private static final String CLIENTE_ID = "cliente-1";
-    private static final String WEBHOOK_SECRET = "test-webhook-secret";
 
     @BeforeEach
     void setUp() {
         OrdemServicoController controller = new OrdemServicoController(
                 criarOrdemServicoUseCase, consultarOrdemServicoUseCase, listarOrdensServicoUseCase,
                 listarPorVeiculoOrdemServicoUseCase, iniciarDiagnosticoOrdemServicoUseCase,
-                gerarOrcamentoUseCase, atualizarOrcamentoUseCase, enviarOrcamentoUseCase,
-                aguardarOrcamentoUseCase, aprovarOrcamentoUseCase, negarOrcamentoUseCase,
                 iniciarExecucaoUseCase, finalizarOrdemServicoUseCase, entregarOrdemServicoUseCase,
                 listarServicosPorOSUseCase, iniciarServicoUseCase, finalizarServicoUseCase,
-                new OrdemServicoPresenter(), new WebhookTokenValidator(WEBHOOK_SECRET));
+                new OrdemServicoPresenter());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -115,17 +91,7 @@ class OrdemServicoControllerTest {
 
     private OrdemServico osRecebida() {
         return OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                OrdemServicoStatus.RECEBIDA, null, null, null);
-    }
-
-    private OrdemServico osComOrcamento() {
-        OrdemServico os = OrdemServico.criar(VEICULO_ID, CLIENTE_ID);
-        os.iniciarDiagnostico();
-        os.gerarOrcamento(List.of(
-                new ItemOrcamento("insumo-1", null, "Óleo", 2, new BigDecimal("50.00"))),
-                "obs");
-        return OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                OrdemServicoStatus.EM_DIAGNOSTICO, os.getOrcamento(), null, null);
+                OrdemServicoStatus.RECEBIDA, null, null);
     }
 
     private StatusServico statusServico() {
@@ -138,20 +104,6 @@ class OrdemServicoControllerTest {
         CriarOrdemServicoRequest request = new CriarOrdemServicoRequest();
         request.setVeiculoId(VEICULO_ID);
         request.setClienteId(CLIENTE_ID);
-        return request;
-    }
-
-    private GerarOrcamentoRequest orcamentoRequest() {
-        ItemOrcamentoRequest insumo = new ItemOrcamentoRequest();
-        insumo.setInsumoId("insumo-1");
-        insumo.setQuantidade(2);
-        ItemServicoRequest servico = new ItemServicoRequest();
-        servico.setServicoId("servico-1");
-        servico.setQuantidade(1);
-        GerarOrcamentoRequest request = new GerarOrcamentoRequest();
-        request.setInsumos(List.of(insumo));
-        request.setServicos(List.of(servico));
-        request.setObservacoes("obs");
         return request;
     }
 
@@ -182,7 +134,7 @@ class OrdemServicoControllerTest {
 
     @Test
     void deveCriarOrdemERetornar201() throws Exception {
-        when(criarOrdemServicoUseCase.executar(eq(VEICULO_ID), eq(CLIENTE_ID), any(GerarOrcamentoInput.class))).thenReturn(osRecebida());
+        when(criarOrdemServicoUseCase.executar(eq(VEICULO_ID), eq(CLIENTE_ID))).thenReturn(osRecebida());
 
         mockMvc.perform(post("/ordem-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -196,7 +148,7 @@ class OrdemServicoControllerTest {
 
     @Test
     void deveRetornar404AoCriar_quandoVeiculoNaoEncontrado() throws Exception {
-        when(criarOrdemServicoUseCase.executar(eq(VEICULO_ID), eq(CLIENTE_ID), any(GerarOrcamentoInput.class)))
+        when(criarOrdemServicoUseCase.executar(eq(VEICULO_ID), eq(CLIENTE_ID)))
                 .thenThrow(new IllegalArgumentException("Veículo não encontrado"));
 
         mockMvc.perform(post("/ordem-servico")
@@ -245,7 +197,7 @@ class OrdemServicoControllerTest {
     void deveIniciarDiagnosticoERetornar200() throws Exception {
         when(iniciarDiagnosticoOrdemServicoUseCase.executar(OS_ID))
                 .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.EM_DIAGNOSTICO, null, null, null));
+                        OrdemServicoStatus.EM_DIAGNOSTICO, null, null));
 
         mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-diagnostico"))
                 .andExpect(status().isOk())
@@ -262,10 +214,35 @@ class OrdemServicoControllerTest {
     }
 
     @Test
+    void deveIniciarExecucaoSemBodyERetornar200() throws Exception {
+        when(iniciarExecucaoUseCase.executar(OS_ID, List.of()))
+                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
+                        OrdemServicoStatus.EM_EXECUCAO, null, null));
+
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-execucao"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
+    }
+
+    @Test
+    void deveIniciarExecucaoComServicosERetornar200() throws Exception {
+        IniciarExecucaoRequest req = new IniciarExecucaoRequest(List.of("servico-1", "servico-2"));
+        when(iniciarExecucaoUseCase.executar(OS_ID, List.of("servico-1", "servico-2")))
+                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
+                        OrdemServicoStatus.EM_EXECUCAO, null, null));
+
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-execucao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
+    }
+
+    @Test
     void deveFinalizarERetornar200() throws Exception {
         when(finalizarOrdemServicoUseCase.executar(OS_ID))
                 .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.FINALIZADA, null, new BigDecimal("100.00"), null));
+                        OrdemServicoStatus.FINALIZADA, new BigDecimal("100.00"), null));
 
         mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/finalizar"))
                 .andExpect(status().isOk())
@@ -277,117 +254,11 @@ class OrdemServicoControllerTest {
     void deveEntregarERetornar200() throws Exception {
         when(entregarOrdemServicoUseCase.executar(OS_ID))
                 .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.ENTREGUE, null, null, null));
+                        OrdemServicoStatus.ENTREGUE, null, null));
 
         mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/entregar"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ENTREGUE"));
-    }
-
-    // --- orçamento ---
-
-    @Test
-    void deveGerarOrcamentoERetornar200() throws Exception {
-        when(gerarOrcamentoUseCase.executar(eq(OS_ID), any(GerarOrcamentoInput.class)))
-                .thenReturn(osComOrcamento());
-
-        mockMvc.perform(post("/ordem-servico/" + OS_ID + "/orcamento")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(orcamentoRequest())))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orcamento.status").value("PENDENTE"))
-                .andExpect(jsonPath("$.orcamento.itens.length()").value(1))
-                .andExpect(jsonPath("$.orcamento.valorTotal").value(100.00));
-    }
-
-    @Test
-    void deveRetornar404AoGerarOrcamento_quandoInsumoNaoEncontrado() throws Exception {
-        when(gerarOrcamentoUseCase.executar(eq(OS_ID), any(GerarOrcamentoInput.class)))
-                .thenThrow(new IllegalArgumentException("Insumo não encontrado"));
-
-        mockMvc.perform(post("/ordem-servico/" + OS_ID + "/orcamento")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(orcamentoRequest())))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void deveAtualizarOrcamentoERetornar200() throws Exception {
-        when(atualizarOrcamentoUseCase.executar(eq(OS_ID), any(GerarOrcamentoInput.class)))
-                .thenReturn(osComOrcamento());
-
-        mockMvc.perform(put("/ordem-servico/" + OS_ID + "/orcamento")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(orcamentoRequest())))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orcamento.itens.length()").value(1));
-    }
-
-    @Test
-    void deveRetornar409AoAtualizarOrcamento_quandoEstadoInvalido() throws Exception {
-        when(atualizarOrcamentoUseCase.executar(eq(OS_ID), any(GerarOrcamentoInput.class)))
-                .thenThrow(new IllegalStateException("Orçamento deve estar AGUARDANDO"));
-
-        mockMvc.perform(put("/ordem-servico/" + OS_ID + "/orcamento")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(orcamentoRequest())))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void deveEnviarOrcamentoERetornar200() throws Exception {
-        when(enviarOrcamentoUseCase.executar(OS_ID)).thenReturn(osComOrcamento());
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/orcamento/enviar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(OS_ID));
-    }
-
-    @Test
-    void deveAguardarOrcamentoERetornar200() throws Exception {
-        when(aguardarOrcamentoUseCase.executar(OS_ID)).thenReturn(osComOrcamento());
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/orcamento/aguardar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(OS_ID));
-    }
-
-    @Test
-    void deveAprovarOrcamentoERetornar200() throws Exception {
-        when(aprovarOrcamentoUseCase.executar(OS_ID)).thenReturn(osComOrcamento());
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/orcamento/aprovar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(OS_ID));
-    }
-
-    @Test
-    void deveRetornar409AoAprovarOrcamento_quandoEstadoInvalido() throws Exception {
-        when(aprovarOrcamentoUseCase.executar(OS_ID))
-                .thenThrow(new IllegalStateException("Orçamento em estado inválido"));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/orcamento/aprovar"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void deveNegarOrcamentoERetornar200() throws Exception {
-        when(negarOrcamentoUseCase.executar(OS_ID)).thenReturn(osComOrcamento());
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/orcamento/negar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(OS_ID));
-    }
-
-    @Test
-    void deveIniciarExecucaoERetornar200() throws Exception {
-        when(iniciarExecucaoUseCase.executar(OS_ID))
-                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.EM_EXECUCAO, null, null, null));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-execucao"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
     }
 
     // --- serviços ---
@@ -459,54 +330,6 @@ class OrdemServicoControllerTest {
             .containsExactlyInAnyOrderElementsOf(errors);
     }
 
-    @ParameterizedTest
-    @MethodSource("dadosCamposInvalidosOrcamento")
-    void deveRetornar400_quandoCamposEstaoInvalidosAoCadastrarOrcamento(String filename, List<String> errors) throws Exception {
-        var request = fileUtils.readResourceFile("/ordem_servicos/%s".formatted(filename));
-
-        var ordemServicoId = UUID.randomUUID();
-
-        var mvcResult = mockMvc.perform(MockMvcRequestBuilders.post("/ordem-servico/"+ordemServicoId+"/orcamento")
-                .content(request)
-                .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andDo(MockMvcResultHandlers.print())
-            .andExpect(MockMvcResultMatchers.status().isBadRequest())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        var responseError = objectMapper.readValue(mvcResult, ValidationErrorResponse.class);
-
-        Assertions.assertThat(responseError.erros())
-            .extracting(FieldError::mensagem)
-            .containsExactlyInAnyOrderElementsOf(errors);
-    }
-
-    @ParameterizedTest
-    @MethodSource("dadosCamposInvalidosOrcamentoAlterar")
-    void deveRetornar400_quandoCamposEstaoInvalidosAoAlterarOrcamento(String filename, List<String> errors) throws Exception {
-        var request = fileUtils.readResourceFile("/ordem_servicos/%s".formatted(filename));
-
-        var ordemServicoId = UUID.randomUUID();
-
-        var mvcResult = mockMvc.perform(MockMvcRequestBuilders.put("/ordem-servico/"+ordemServicoId+"/orcamento")
-                .content(request)
-                .contentType(MediaType.APPLICATION_JSON)
-            )
-            .andDo(MockMvcResultHandlers.print())
-            .andExpect(MockMvcResultMatchers.status().isBadRequest())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-        var responseError = objectMapper.readValue(mvcResult, ValidationErrorResponse.class);
-
-        Assertions.assertThat(responseError.erros())
-            .extracting(FieldError::mensagem)
-            .containsExactlyInAnyOrderElementsOf(errors);
-    }
-
     private static Stream<Arguments> dadosCamposInvalidosOrdemServico() {
         var erroVeiculoId = "O ID do veículo é obrigatório";
         var erroClienteId = "O ID do cliente é obrigatório";
@@ -516,30 +339,6 @@ class OrdemServicoControllerTest {
         return Stream.of(
             Arguments.of("cadastrar-ordem-servico-400-campos-vazios.json", errosComuns),
             Arguments.of("cadastrar-ordem-servico-400-campos-nulos.json", errosComuns)
-        );
-    }
-
-    private static Stream<Arguments> dadosCamposInvalidosOrcamento() {
-        var erroInsumoId = "O ID do insumo é obrigatório";
-        var erroInsumoQuantidade = "A quantidade de insumo deve ser maior que zero";
-        var erroServicoId = "O ID do serviço é obrigatório";
-        var erroServicoQuantidade = "A quantidade de serviço deve ser maior que zero";
-
-        return Stream.of(
-            Arguments.of("cadastrar-orcamento-400-campos-nulos.json", List.of(erroInsumoId, erroServicoId)),
-            Arguments.of("cadastrar-orcamento-400-quantidade-negativa.json", List.of(erroInsumoQuantidade, erroServicoQuantidade))
-        );
-    }
-
-    private static Stream<Arguments> dadosCamposInvalidosOrcamentoAlterar() {
-        var erroInsumoId = "O ID do insumo é obrigatório";
-        var erroInsumoQuantidade = "A quantidade de insumo deve ser maior que zero";
-        var erroServicoId = "O ID do serviço é obrigatório";
-        var erroServicoQuantidade = "A quantidade de serviço deve ser maior que zero";
-
-        return Stream.of(
-            Arguments.of("alterar-orcamento-400-campos-nulos.json", List.of(erroInsumoId, erroServicoId)),
-            Arguments.of("alterar-orcamento-400-quantidade-negativa.json", List.of(erroInsumoQuantidade, erroServicoQuantidade))
         );
     }
 }

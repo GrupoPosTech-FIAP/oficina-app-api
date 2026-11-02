@@ -15,7 +15,7 @@ public class MinhaOrdemServicoPresenter {
                 : new MinhaOrdemServicoResponse.VeiculoResumo(
                         o.veiculo().id(), o.veiculo().placa(), o.veiculo().marca(),
                         o.veiculo().modelo(), o.veiculo().ano(), o.veiculo().cor());
-        return new MinhaOrdemServicoResponse(o.id(), o.status(), o.orcamentoStatus(), veiculo);
+        return new MinhaOrdemServicoResponse(o.id(), o.status(), veiculo);
     }
 
     public List<MinhaOrdemServicoResponse> apresentar(List<MinhaOrdemServicoOutput> outputs) {

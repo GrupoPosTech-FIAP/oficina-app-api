@@ -3,12 +3,9 @@ package com.mecanica.oficina_api.adapters.persistence;
 import com.mecanica.oficina_api.adapters.persistence.repository.ClienteSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.VeiculoSpringDataRepository;
 import com.mecanica.oficina_api.application.ordemservico.output.MinhaOrdemServicoOutput;
-import com.mecanica.oficina_api.domain.ordemservico.ItemOrcamento;
-import com.mecanica.oficina_api.domain.ordemservico.OrcamentoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -69,35 +66,25 @@ class OrdemServicoJpaGatewayTest {
         assertThat(salvo.getVeiculoId()).isEqualTo("veiculo-1");
         assertThat(salvo.getClienteId()).isEqualTo("cliente-1");
         assertThat(salvo.getStatus()).isEqualTo(OrdemServicoStatus.RECEBIDA);
-        assertThat(salvo.getOrcamento()).isNull();
     }
 
     @Test
-    void deveAtualizarOrdemComOrcamento_ePersistirItens() {
+    void deveAtualizarStatusDaOrdem() {
         OrdemServico salvo = gateway.cadastrar("veiculo-1", "cliente-1");
 
-        OrdemServico comOrcamento = gateway.buscar(salvo.getId()).orElseThrow();
-        comOrcamento.iniciarDiagnostico();
-        comOrcamento.gerarOrcamento(List.of(
-                new ItemOrcamento("insumo-1", null, "Óleo", 2, new BigDecimal("50.00")),
-                new ItemOrcamento(null, "servico-1", "Troca", 1, new BigDecimal("30.00"))),
-                "obs");
+        OrdemServico emDiagnostico = gateway.buscar(salvo.getId()).orElseThrow();
+        emDiagnostico.iniciarDiagnostico();
 
-        gateway.atualizar(comOrcamento);
+        gateway.atualizar(emDiagnostico);
 
         OrdemServico lido = gateway.buscar(salvo.getId()).orElseThrow();
         assertThat(lido.getStatus()).isEqualTo(OrdemServicoStatus.EM_DIAGNOSTICO);
-        assertThat(lido.getOrcamento()).isNotNull();
-        assertThat(lido.getOrcamento().getStatus()).isEqualTo(OrcamentoStatus.PENDENTE);
-        assertThat(lido.getOrcamento().getObservacoes()).isEqualTo("obs");
-        assertThat(lido.getOrcamento().getItens()).hasSize(2);
-        assertThat(lido.getOrcamento().getValorTotal()).isEqualByComparingTo("130.00");
     }
 
     @Test
     void deveLancarExcecao_quandoAtualizarOrdemInexistente() {
         OrdemServico inexistente = OrdemServico.reconstituir("inexistente", "veiculo-1",
-                "cliente-1", OrdemServicoStatus.RECEBIDA, null, null, null);
+                "cliente-1", OrdemServicoStatus.RECEBIDA, null, null);
 
         // @Repository: a IllegalArgumentException interna é traduzida pelo Spring, mantendo a causa raiz
         assertThatThrownBy(() -> gateway.atualizar(inexistente))

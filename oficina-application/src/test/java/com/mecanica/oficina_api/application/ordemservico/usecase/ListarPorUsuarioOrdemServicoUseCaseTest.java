@@ -31,9 +31,9 @@ class ListarPorUsuarioOrdemServicoUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        osRecebida = new MinhaOrdemServicoOutput("os-1", "RECEBIDA", LocalDateTime.now(),null,
+        osRecebida = new MinhaOrdemServicoOutput("os-1", "RECEBIDA", LocalDateTime.now(),
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
-        osEmExecucao = new MinhaOrdemServicoOutput("os-2", "EM_EXECUCAO", LocalDateTime.now(), "APROVADO",
+        osEmExecucao = new MinhaOrdemServicoOutput("os-2", "EM_EXECUCAO", LocalDateTime.now(),
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-2", "XYZ9A88", "VW", "Gol", 2021, "Preto"));
     }
 
@@ -86,9 +86,9 @@ class ListarPorUsuarioOrdemServicoUseCaseTest {
 
     @Test
     void deveIgnorarOrdensComStatusFinalizadaOuEntregue() {
-        MinhaOrdemServicoOutput osFinalizada = new MinhaOrdemServicoOutput("os-fin", "FINALIZADA", LocalDateTime.now(), null,
+        MinhaOrdemServicoOutput osFinalizada = new MinhaOrdemServicoOutput("os-fin", "FINALIZADA", LocalDateTime.now(),
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
-        MinhaOrdemServicoOutput osEntregue = new MinhaOrdemServicoOutput("os-ent", "ENTREGUE", LocalDateTime.now(), null,
+        MinhaOrdemServicoOutput osEntregue = new MinhaOrdemServicoOutput("os-ent", "ENTREGUE", LocalDateTime.now(),
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
 
         when(ordemServicoGateway.buscarPorCliente("cli-1")).thenReturn(List.of(osRecebida, osFinalizada, osEmExecucao, osEntregue));
@@ -102,11 +102,11 @@ class ListarPorUsuarioOrdemServicoUseCaseTest {
     @Test
     void deveOrdenarOrdensPorPrioridadeEDataCriacao() {
         LocalDateTime agora = LocalDateTime.now();
-        MinhaOrdemServicoOutput osAguardandoRecente = new MinhaOrdemServicoOutput("os-aguard-1", "AGUARDANDO_APROVACAO", agora.plusMinutes(10), null,
+        MinhaOrdemServicoOutput osAguardandoRecente = new MinhaOrdemServicoOutput("os-aguard-1", "AGUARDANDO_APROVACAO", agora.plusMinutes(10),
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
-        MinhaOrdemServicoOutput osAguardandoAntiga = new MinhaOrdemServicoOutput("os-aguard-2", "AGUARDANDO_APROVACAO", agora, null,
+        MinhaOrdemServicoOutput osAguardandoAntiga = new MinhaOrdemServicoOutput("os-aguard-2", "AGUARDANDO_APROVACAO", agora,
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
-        MinhaOrdemServicoOutput osDiagnostico = new MinhaOrdemServicoOutput("os-diag", "EM_DIAGNOSTICO", agora, null,
+        MinhaOrdemServicoOutput osDiagnostico = new MinhaOrdemServicoOutput("os-diag", "EM_DIAGNOSTICO", agora,
             new MinhaOrdemServicoOutput.VeiculoResumo("veic-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
 
         when(ordemServicoGateway.buscarPorCliente("cli-1")).thenReturn(List.of(osRecebida, osDiagnostico, osAguardandoRecente, osEmExecucao, osAguardandoAntiga));

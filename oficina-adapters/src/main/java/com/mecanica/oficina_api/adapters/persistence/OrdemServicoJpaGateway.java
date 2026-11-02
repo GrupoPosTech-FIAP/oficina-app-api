@@ -4,14 +4,10 @@ import com.mecanica.oficina_api.adapters.persistence.repository.OrdemServicoSpri
 import com.mecanica.oficina_api.adapters.persistence.repository.VeiculoSpringDataRepository;
 import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGateway;
 import com.mecanica.oficina_api.application.ordemservico.output.MinhaOrdemServicoOutput;
-import com.mecanica.oficina_api.domain.ordemservico.ItemOrcamento;
-import com.mecanica.oficina_api.domain.ordemservico.Orcamento;
-import com.mecanica.oficina_api.domain.ordemservico.OrcamentoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,7 +42,7 @@ public class OrdemServicoJpaGateway implements OrdemServicoGateway {
     }
 
     @Override
-    public Optional<OrdemServico>   buscar(String id) {
+    public Optional<OrdemServico> buscar(String id) {
         return repository.findById(id).map(this::toDomain);
     }
 
@@ -76,20 +72,8 @@ public class OrdemServicoJpaGateway implements OrdemServicoGateway {
     // --- mapeamento ---
 
     private OrdemServico toDomain(OrdemServicoJpaEntity entity) {
-        OrcamentoStatus orcStatus = entity.getOrcamentoStatus() != null
-                ? OrcamentoStatus.valueOf(entity.getOrcamentoStatus())
-                : null;
-        Orcamento orcamento = null;
-        if (orcStatus != null) {
-            List<ItemOrcamento> itens = entity.getItensOrcamento().stream()
-                    .map(i -> new ItemOrcamento(i.getInsumoId(), i.getServicoId(), i.getDescricao(),
-                            i.getQuantidade(), i.getPrecoUnitario()))
-                    .toList();
-            orcamento = Orcamento.reconstituir(itens, orcStatus, entity.getOrcamentoObservacoes(),
-                    entity.getOrcamentoRespondidoEm());
-        }
         return OrdemServico.reconstituir(entity.getId(), entity.getVeiculoId(), entity.getClienteId(),
-                OrdemServicoStatus.valueOf(entity.getStatus()), orcamento, entity.getValorFinal(),
+                OrdemServicoStatus.valueOf(entity.getStatus()), entity.getValorFinal(),
                 entity.getDataFinal());
     }
 
@@ -97,26 +81,6 @@ public class OrdemServicoJpaGateway implements OrdemServicoGateway {
         entity.setStatus(os.getStatus().name());
         entity.setValorFinal(os.getValorFinal());
         entity.setDataFinal(os.getDataFinal());
-
-        Orcamento orc = os.getOrcamento();
-        if (orc != null) {
-            entity.setOrcamentoStatus(orc.getStatus().name());
-            entity.setOrcamentoObservacoes(orc.getObservacoes());
-            entity.setOrcamentoRespondidoEm(orc.getRespondidoEm());
-
-            List<ItemOrcamentoJpaEntity> itensEntity = new ArrayList<>();
-            for (ItemOrcamento di : orc.getItens()) {
-                ItemOrcamentoJpaEntity ie = new ItemOrcamentoJpaEntity();
-                ie.setDescricao(di.getDescricao());
-                ie.setQuantidade(di.getQuantidade());
-                ie.setPrecoUnitario(di.getPrecoUnitario());
-                ie.setInsumoId(di.getInsumoId());
-                ie.setServicoId(di.getServicoId());
-                itensEntity.add(ie);
-            }
-            entity.getItensOrcamento().clear();
-            entity.getItensOrcamento().addAll(itensEntity);
-        }
     }
 
     private MinhaOrdemServicoOutput toMinhaOutput(OrdemServicoJpaEntity entity) {
@@ -124,6 +88,6 @@ public class OrdemServicoJpaGateway implements OrdemServicoGateway {
                 .map(v -> new MinhaOrdemServicoOutput.VeiculoResumo(
                         v.getId(), v.getPlaca(), v.getMarca(), v.getModelo(), v.getAno(), v.getCor()))
                 .orElse(null);
-        return new MinhaOrdemServicoOutput(entity.getId(), entity.getStatus(), entity.getDataCriacao(), entity.getOrcamentoStatus(), veiculo);
+        return new MinhaOrdemServicoOutput(entity.getId(), entity.getStatus(), entity.getDataCriacao(), veiculo);
     }
 }

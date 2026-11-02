@@ -17,13 +17,12 @@ class MinhaOrdemServicoPresenterTest {
     @Test
     void deveApresentar_comVeiculoNulo() {
         MinhaOrdemServicoOutput output = new MinhaOrdemServicoOutput(
-                "os-1", "RECEBIDA", LocalDateTime.now(), null, null);
+                "os-1", "RECEBIDA", LocalDateTime.now(), null);
 
         MinhaOrdemServicoResponse response = presenter.apresentar(output);
 
         assertThat(response.id()).isEqualTo("os-1");
         assertThat(response.status()).isEqualTo("RECEBIDA");
-        assertThat(response.orcamentoStatus()).isNull();
         assertThat(response.veiculo()).isNull();
     }
 
@@ -32,13 +31,12 @@ class MinhaOrdemServicoPresenterTest {
         MinhaOrdemServicoOutput.VeiculoResumo veiculo = new MinhaOrdemServicoOutput.VeiculoResumo(
                 "veiculo-1", "ABC1D23", "Ford", "Ka", 2020, "Prata");
         MinhaOrdemServicoOutput output = new MinhaOrdemServicoOutput(
-                "os-1", "EM_DIAGNOSTICO", LocalDateTime.now(), "PENDENTE", veiculo);
+                "os-1", "EM_DIAGNOSTICO", LocalDateTime.now(), veiculo);
 
         MinhaOrdemServicoResponse response = presenter.apresentar(output);
 
         assertThat(response.id()).isEqualTo("os-1");
         assertThat(response.status()).isEqualTo("EM_DIAGNOSTICO");
-        assertThat(response.orcamentoStatus()).isEqualTo("PENDENTE");
         assertThat(response.veiculo()).isNotNull();
         assertThat(response.veiculo().id()).isEqualTo("veiculo-1");
         assertThat(response.veiculo().placa()).isEqualTo("ABC1D23");
@@ -51,7 +49,7 @@ class MinhaOrdemServicoPresenterTest {
     @Test
     void deveApresentarLista() {
         MinhaOrdemServicoOutput output = new MinhaOrdemServicoOutput(
-                "os-1", "RECEBIDA", LocalDateTime.now(), null, null);
+                "os-1", "RECEBIDA", LocalDateTime.now(), null);
 
         List<MinhaOrdemServicoResponse> responses = presenter.apresentar(List.of(output));
 

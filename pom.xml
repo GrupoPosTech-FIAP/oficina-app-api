@@ -19,8 +19,8 @@
 	<modules>
 		<module>oficina-domain</module>
 		<module>oficina-application</module>
-    <module>oficina-adapters</module>
-    <module>oficina-infrastructure</module>
+        <module>oficina-adapters</module>
+        <module>oficina-infrastructure</module>
 	</modules>
 
 	<properties>

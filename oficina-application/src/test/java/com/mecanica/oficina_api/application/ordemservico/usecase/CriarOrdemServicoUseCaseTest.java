@@ -6,23 +6,18 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.mecanica.oficina_api.application.cliente.gateway.ClienteGateway;
-import com.mecanica.oficina_api.application.ordemservico.MontadorItensOrcamento;
 import com.mecanica.oficina_api.application.ordemservico.gateway.NotificadorClienteGateway;
 import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGateway;
-import com.mecanica.oficina_api.application.ordemservico.input.GerarOrcamentoInput;
 import com.mecanica.oficina_api.application.veiculo.gateway.VeiculoGateway;
 import com.mecanica.oficina_api.domain.cliente.Cliente;
 import com.mecanica.oficina_api.domain.cliente.Cpf;
 import com.mecanica.oficina_api.domain.cliente.Email;
 import com.mecanica.oficina_api.domain.cliente.Telefone;
-import com.mecanica.oficina_api.domain.ordemservico.ItemOrcamento;
-import com.mecanica.oficina_api.domain.ordemservico.OrcamentoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 import com.mecanica.oficina_api.domain.veiculo.Veiculo;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -44,9 +39,6 @@ class CriarOrdemServicoUseCaseTest {
     private ClienteGateway clienteGateway;
 
     @Mock
-    private MontadorItensOrcamento montadorItensOrcamento;
-
-    @Mock
     private NotificadorClienteGateway notificadorClienteGateway;
 
     @InjectMocks
@@ -65,33 +57,6 @@ class CriarOrdemServicoUseCaseTest {
 
         assertThat(resultado.getStatus()).isEqualTo(OrdemServicoStatus.RECEBIDA);
         verify(ordemServicoGateway).cadastrar(VEICULO_ID, CLIENTE_ID);
-    }
-
-    @Test
-    void deveCriarOrdemServicoEOrcamentoComSucesso() {
-        Veiculo veiculo = Veiculo.reconstituir(VEICULO_ID, CLIENTE_ID, "ABC1D23", "Fiat", "Uno", 2020, "Prata", true);
-        Cliente cliente = Cliente.reconstituir(CLIENTE_ID, "João Silva", new Cpf("37518712091"),
-            new Email("cliente@teste.com"), new Telefone("5437891237"), LocalDateTime.now(), null);
-
-        GerarOrcamentoInput input = new GerarOrcamentoInput(null, List.of(new GerarOrcamentoInput.ItemServicoInput("serv-1", 1)), "obs");
-        List<ItemOrcamento> itens = List.of(itemServico("serv-1"));
-
-        when(veiculoGateway.buscar(VEICULO_ID)).thenReturn(Optional.of(veiculo));
-        when(clienteGateway.findByIdAtivo(CLIENTE_ID)).thenReturn(Optional.of(cliente));
-        when(ordemServicoGateway.cadastrar(VEICULO_ID, CLIENTE_ID)).thenReturn(osSemOrcamento(OrdemServicoStatus.RECEBIDA));
-        when(montadorItensOrcamento.montar(input)).thenReturn(itens);
-        when(ordemServicoGateway.atualizar(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        OrdemServico resultado = useCase.executar(VEICULO_ID, CLIENTE_ID, input);
-
-        assertThat(resultado.getStatus()).isEqualTo(OrdemServicoStatus.RECEBIDA);
-        verify(ordemServicoGateway).cadastrar(VEICULO_ID, CLIENTE_ID);
-
-        assertThat(resultado.getOrcamento()).isNotNull();
-        assertThat(resultado.getOrcamento().getStatus()).isEqualTo(OrcamentoStatus.PENDENTE);
-        assertThat(resultado.getOrcamento().getItens()).hasSize(1);
-        assertThat(resultado.getOrcamento().getObservacoes()).isEqualTo("obs");
-        verify(ordemServicoGateway).atualizar(resultado);
     }
 
     @Test

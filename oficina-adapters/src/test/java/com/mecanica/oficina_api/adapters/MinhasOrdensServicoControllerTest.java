@@ -63,7 +63,7 @@ class MinhasOrdensServicoControllerTest {
     @Test
     void deveListarOrdensDoClienteLogado_semFiltros() throws Exception {
         MinhaOrdemServicoOutput output = new MinhaOrdemServicoOutput(
-                "os-1", "RECEBIDA", LocalDateTime.now(), "PENDENTE",
+                "os-1", "RECEBIDA", LocalDateTime.now(),
                 new MinhaOrdemServicoOutput.VeiculoResumo("v-1", "ABC1D23", "Fiat", "Uno", 2020, "Prata"));
         when(listarPorUsuarioOrdemServicoUseCase.executar(eq(CLIENTE_ID), isNull(), isNull()))
                 .thenReturn(List.of(output));

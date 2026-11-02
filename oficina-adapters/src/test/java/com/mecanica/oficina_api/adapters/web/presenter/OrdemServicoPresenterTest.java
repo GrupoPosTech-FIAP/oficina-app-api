@@ -2,7 +2,6 @@ package com.mecanica.oficina_api.adapters.web.presenter;
 
 import com.mecanica.oficina_api.adapters.web.dto.response.OrdemServicoResponse;
 import com.mecanica.oficina_api.adapters.web.dto.response.ServicoStatusResponse;
-import com.mecanica.oficina_api.domain.ordemservico.ItemOrcamento;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
 import com.mecanica.oficina_api.domain.ordemservico.ServicoStatus;
@@ -21,9 +20,9 @@ class OrdemServicoPresenterTest {
     private final OrdemServicoPresenter presenter = new OrdemServicoPresenter();
 
     @Test
-    void deveApresentarOrdemSemOrcamento_comOrcamentoNulo() {
+    void deveApresentarOrdemServico() {
         OrdemServico os = OrdemServico.reconstituir("os-1", "veiculo-1", "cliente-1",
-                OrdemServicoStatus.RECEBIDA, null, null, null);
+                OrdemServicoStatus.RECEBIDA, null, null);
 
         OrdemServicoResponse response = presenter.apresentar(os);
 
@@ -33,36 +32,25 @@ class OrdemServicoPresenterTest {
         assertThat(response.getStatus()).isEqualTo("RECEBIDA");
         assertThat(response.getValorFinal()).isNull();
         assertThat(response.getDataFinal()).isNull();
-        assertThat(response.getOrcamento()).isNull();
     }
 
     @Test
-    void deveApresentarOrdemComOrcamento_mapeandoItensValorTotalEStatus() {
-        OrdemServico os = OrdemServico.criar("veiculo-1", "cliente-1");
-        os.iniciarDiagnostico();
-        os.gerarOrcamento(List.of(
-                new ItemOrcamento("insumo-1", null, "Óleo", 2, new BigDecimal("50.00")),
-                new ItemOrcamento(null, "servico-1", "Troca de óleo", 1, new BigDecimal("30.00"))),
-                "observação");
+    void deveApresentarOrdemServicoFinalizadaComValorEData() {
+        LocalDateTime fim = LocalDateTime.of(2026, 5, 10, 15, 30);
+        OrdemServico os = OrdemServico.reconstituir("os-1", "veiculo-1", "cliente-1",
+                OrdemServicoStatus.FINALIZADA, new BigDecimal("250.00"), fim);
 
         OrdemServicoResponse response = presenter.apresentar(os);
 
-        assertThat(response.getOrcamento()).isNotNull();
-        assertThat(response.getOrcamento().getStatus()).isEqualTo("PENDENTE");
-        assertThat(response.getOrcamento().getObservacoes()).isEqualTo("observação");
-        assertThat(response.getOrcamento().getValorTotal()).isEqualByComparingTo("130.00");
-        assertThat(response.getOrcamento().getItens()).hasSize(2);
-        assertThat(response.getOrcamento().getItens().get(0).getInsumo_id()).isEqualTo("insumo-1");
-        assertThat(response.getOrcamento().getItens().get(0).getDescricao()).isEqualTo("Óleo");
-        assertThat(response.getOrcamento().getItens().get(0).getQuantidade()).isEqualTo(2);
-        assertThat(response.getOrcamento().getItens().get(0).getValorTotal()).isEqualByComparingTo("100.00");
-        assertThat(response.getOrcamento().getItens().get(1).getServico_id()).isEqualTo("servico-1");
+        assertThat(response.getStatus()).isEqualTo("FINALIZADA");
+        assertThat(response.getValorFinal()).isEqualByComparingTo("250.00");
+        assertThat(response.getDataFinal()).isEqualTo(fim);
     }
 
     @Test
     void deveApresentarListaDeOrdens() {
         OrdemServico os = OrdemServico.reconstituir("os-1", "veiculo-1", "cliente-1",
-                OrdemServicoStatus.RECEBIDA, null, null, null);
+                OrdemServicoStatus.RECEBIDA, null, null);
 
         List<OrdemServicoResponse> responses = presenter.apresentar(List.of(os));
 

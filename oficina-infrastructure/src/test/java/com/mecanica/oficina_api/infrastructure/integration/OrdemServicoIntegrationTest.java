@@ -2,13 +2,10 @@ package com.mecanica.oficina_api.infrastructure.integration;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.mecanica.oficina_api.adapters.persistence.ClienteJpaEntity;
-import com.mecanica.oficina_api.adapters.persistence.InsumosJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.ServicoJpaEntity;
 import com.mecanica.oficina_api.adapters.web.dto.request.CadastrarVeiculoRequest;
 import com.mecanica.oficina_api.adapters.web.dto.request.CriarOrdemServicoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.GerarOrcamentoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.ItemOrcamentoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.ItemServicoRequest;
+import com.mecanica.oficina_api.adapters.web.dto.request.IniciarExecucaoRequest;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
@@ -20,7 +17,6 @@ import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,17 +62,6 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
         return (String) lista.get(0).get("id");
     }
 
-    private InsumosJpaEntity salvarInsumo(String nome, double preco) {
-        InsumosJpaEntity ie = new InsumosJpaEntity();
-        ie.setNome(nome);
-        ie.setPrecoUnitario(BigDecimal.valueOf(preco));
-        ie.setEstoqueAtual(10);
-        ie.setEstoqueMinimo(2);
-        ie.setUnidade("Litro");
-        ie.setAtivo(true);
-        return insumosRepository.save(ie);
-    }
-
     private ServicoJpaEntity salvarServico(String nome, double preco) {
         ServicoJpaEntity servico = new ServicoJpaEntity();
         servico.setId(UUID.randomUUID().toString());
@@ -88,56 +73,25 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
         return servicoRepository.save(servico);
     }
 
-    private GerarOrcamentoRequest orcamentoRequest(String insumoId, String servicoId) {
-        ItemOrcamentoRequest itemInsumo = new ItemOrcamentoRequest();
-        itemInsumo.setInsumoId(insumoId);
-        itemInsumo.setQuantidade(1);
-
-        ItemServicoRequest itemServico = new ItemServicoRequest();
-        itemServico.setServicoId(servicoId);
-        itemServico.setQuantidade(1);
-
-        GerarOrcamentoRequest req = new GerarOrcamentoRequest();
-        req.setInsumos(List.of(itemInsumo));
-        req.setServicos(List.of(itemServico));
-        req.setObservacoes("Servico padrao");
-        return req;
-    }
-
     @Test
-    void fluxoCompleto_criarOsGerarOrcamentoAprovarRetirar() throws Exception {
+    void fluxoCompleto_criarOsDiagnosticarExecutarFinalizarRetirar() throws Exception {
         ClienteJpaEntity c = salvarCliente();
         String veiculoId = cadastrarVeiculo(c.getId());
         String osId = criarOs(veiculoId, c.getId());
-        String insumoId = salvarInsumo("Oleo de motor", 150.0).getId();
         String servicoId = salvarServico("Troca de oleo", 80.0).getId();
 
         mockMvc.perform(comToken(get("/ordem-servico/" + osId)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("RECEBIDA"))
-            .andExpect(jsonPath("$.orcamento").doesNotExist());
+            .andExpect(jsonPath("$.status").value("RECEBIDA"));
 
         mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-diagnostico")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("EM_DIAGNOSTICO"));
 
-        mockMvc.perform(comToken(post("/ordem-servico/" + osId + "/orcamento")
+        IniciarExecucaoRequest iniciarReq = new IniciarExecucaoRequest(List.of(servicoId));
+        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(toJson(orcamentoRequest(insumoId, servicoId)))))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.orcamento.status").value("PENDENTE"))
-            .andExpect(jsonPath("$.orcamento.valorTotal").value(230.0));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/enviar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.orcamento.status").value("ENVIADO"));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/aprovar")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("AGUARDANDO_APROVACAO")) // (pode ser) EM_EXECUCAO
-                .andExpect(jsonPath("$.orcamento.status").value("APROVADO"));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")))
+                .content(toJson(iniciarReq))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
 
@@ -166,47 +120,6 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    void fluxoNegociacao_enviarNegociarAtualizarAprovar() throws Exception {
-        ClienteJpaEntity c = salvarCliente();
-        String veiculoId = cadastrarVeiculo(c.getId());
-        String osId = criarOs(veiculoId, c.getId());
-        String insumoId = salvarInsumo("Oleo de motor", 150.0).getId();
-        String servicoId = salvarServico("Troca de oleo", 80.0).getId();
-        String insumoAtualizadoId = salvarInsumo("Oleo e filtro", 200.0).getId();
-        String servicoAtualizadoId = salvarServico("Troca de oleo", 120.0).getId();
-
-        mockMvc.perform(comToken(post("/ordem-servico/" + osId + "/orcamento")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(toJson(orcamentoRequest(insumoId, servicoId)))))
-            .andExpect(status().isOk());
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/enviar")))
-            .andExpect(status().isOk());
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/aguardar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.orcamento.status").value("AGUARDANDO"));
-
-        mockMvc.perform(comToken(put("/ordem-servico/" + osId + "/orcamento")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(toJson(orcamentoRequest(insumoAtualizadoId, servicoAtualizadoId)))))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.orcamento.valorTotal").value(320.0));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/enviar")))
-            .andExpect(status().isOk());
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/orcamento/aprovar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("AGUARDANDO_APROVACAO"))
-            .andExpect(jsonPath("$.orcamento.status").value("APROVADO"));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
-    }
-
-    @Test
     void criar_veiculoInexistente_retorna404() throws Exception {
         ClienteJpaEntity c = salvarCliente();
         CriarOrdemServicoRequest req = new CriarOrdemServicoRequest();
@@ -216,17 +129,6 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(comToken(post("/ordem-servico")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJson(req))))
-            .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void gerarOrcamento_osNaoExiste_retorna404() throws Exception {
-        String insumoId = salvarInsumo("Óleo de motor", 150.0).getId();
-        String servicoId = salvarServico("Troca de oleo", 80.0).getId();
-
-        mockMvc.perform(comToken(post("/ordem-servico/" + UUID.randomUUID() + "/orcamento")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(toJson(orcamentoRequest(insumoId, servicoId)))))
             .andExpect(status().isNotFound());
     }
 

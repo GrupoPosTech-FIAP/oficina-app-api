@@ -15,19 +15,13 @@ import com.mecanica.oficina_api.application.insumo.usecase.ConsultarInsumoUseCas
 import com.mecanica.oficina_api.application.insumo.usecase.InativarInsumoUseCase;
 import com.mecanica.oficina_api.application.insumo.usecase.ListarInsumosUseCase;
 import com.mecanica.oficina_api.application.insumo.usecase.RegistrarCompraUseCase;
-import com.mecanica.oficina_api.application.ordemservico.MontadorItensOrcamento;
 import com.mecanica.oficina_api.application.ordemservico.gateway.NotificadorClienteGateway;
 import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGateway;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AguardarOrcamentoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AprovarOrcamentoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.AtualizarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.CriarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.EnviarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.EntregarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.GerarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarDiagnosticoOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarExecucaoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarServicoUseCase;
@@ -35,7 +29,6 @@ import com.mecanica.oficina_api.application.ordemservico.usecase.ListarOrdensSer
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorUsuarioOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorVeiculoOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarServicosPorOSUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.NegarOrcamentoUseCase;
 import com.mecanica.oficina_api.application.servico.gateway.ServicoGateway;
 import com.mecanica.oficina_api.application.servico.gateway.StatusServicoGateway;
 import com.mecanica.oficina_api.application.servico.usecase.AlterarServicoUseCase;
@@ -163,7 +156,6 @@ public class ApplicationConfig {
         return new InativarUsuarioUseCase(usuarioGateway);
     }
 
-
     /* Veículo */
     @Bean
     CadastrarVeiculoUseCase cadastrarVeiculoUseCase(VeiculoGateway veiculoGateway, ClienteGateway clienteGateway) {
@@ -188,12 +180,8 @@ public class ApplicationConfig {
 
     /* Ordem de Serviço */
     @Bean
-    MontadorItensOrcamento montadorItensOrcamento(InsumosGateway insumosGateway, ServicoGateway servicoGateway) {
-        return new MontadorItensOrcamento(insumosGateway, servicoGateway);
-    }
-    @Bean
-    CriarOrdemServicoUseCase criarOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway, VeiculoGateway veiculoGateway, ClienteGateway clienteGateway, MontadorItensOrcamento montadorItensOrcamento) {
-        return new CriarOrdemServicoUseCase(ordemServicoGateway, notificadorClienteGateway, veiculoGateway, clienteGateway, montadorItensOrcamento);
+    CriarOrdemServicoUseCase criarOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway, VeiculoGateway veiculoGateway, ClienteGateway clienteGateway) {
+        return new CriarOrdemServicoUseCase(ordemServicoGateway, notificadorClienteGateway, veiculoGateway, clienteGateway);
     }
     @Bean
     ConsultarOrdemServicoUseCase consultarOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway) {
@@ -214,30 +202,6 @@ public class ApplicationConfig {
     @Bean
     IniciarDiagnosticoOrdemServicoUseCase iniciarDiagnosticoOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway) {
         return new IniciarDiagnosticoOrdemServicoUseCase(ordemServicoGateway, notificadorClienteGateway);
-    }
-    @Bean
-    GerarOrcamentoUseCase gerarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway, MontadorItensOrcamento montadorItensOrcamento) {
-        return new GerarOrcamentoUseCase(ordemServicoGateway, montadorItensOrcamento);
-    }
-    @Bean
-    AtualizarOrcamentoUseCase atualizarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway, MontadorItensOrcamento montadorItensOrcamento) {
-        return new AtualizarOrcamentoUseCase(ordemServicoGateway, montadorItensOrcamento);
-    }
-    @Bean
-    EnviarOrcamentoUseCase enviarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway) {
-        return new EnviarOrcamentoUseCase(ordemServicoGateway, notificadorClienteGateway);
-    }
-    @Bean
-    AguardarOrcamentoUseCase aguardarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway) {
-        return new AguardarOrcamentoUseCase(ordemServicoGateway);
-    }
-    @Bean
-    AprovarOrcamentoUseCase aprovarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway, InsumosGateway insumosGateway, NotificarEstoqueBaixoGateway notificarEstoqueBaixoGateway) {
-        return new AprovarOrcamentoUseCase(ordemServicoGateway, insumosGateway, notificarEstoqueBaixoGateway);
-    }
-    @Bean
-    NegarOrcamentoUseCase negarOrcamentoUseCase(OrdemServicoGateway ordemServicoGateway) {
-        return new NegarOrcamentoUseCase(ordemServicoGateway);
     }
     @Bean
     IniciarExecucaoUseCase iniciarExecucaoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway, StatusServicoGateway statusServicoGateway) {

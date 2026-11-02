@@ -7,7 +7,6 @@ public record MinhaOrdemServicoOutput(
         String id,
         String status,
         LocalDateTime dataCriacao,
-        String orcamentoStatus,
         VeiculoResumo veiculo) {
     public record VeiculoResumo(String id, String placa, String marca, String modelo, int ano, String cor) {}
 

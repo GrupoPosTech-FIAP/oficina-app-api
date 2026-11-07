@@ -1,12 +1,10 @@
 package com.mecanica.oficina_api.infrastructure.config;
 
 import com.mecanica.oficina_api.adapters.persistence.ClienteJpaEntity;
-import com.mecanica.oficina_api.adapters.persistence.InsumosJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.ServicoJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.UsuarioJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.VeiculoJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.repository.ClienteSpringDataRepository;
-import com.mecanica.oficina_api.adapters.persistence.repository.InsumosSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.ServicoSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.UsuarioSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.VeiculoSpringDataRepository;
@@ -42,20 +40,17 @@ public class DevDataLoader implements CommandLineRunner {
     private final ClienteSpringDataRepository clienteRepository;
     private final VeiculoSpringDataRepository veiculoRepository;
     private final UsuarioSpringDataRepository usuarioRepository;
-    private final InsumosSpringDataRepository insumosRepository;
     private final ServicoSpringDataRepository servicoRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DevDataLoader(ClienteSpringDataRepository clienteRepository,
                          VeiculoSpringDataRepository veiculoRepository,
                          UsuarioSpringDataRepository usuarioRepository,
-                         InsumosSpringDataRepository insumosRepository,
                          ServicoSpringDataRepository servicoRepository,
                          PasswordEncoder passwordEncoder) {
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
         this.usuarioRepository = usuarioRepository;
-        this.insumosRepository = insumosRepository;
         this.servicoRepository = servicoRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -66,7 +61,6 @@ public class DevDataLoader implements CommandLineRunner {
         ClienteJpaEntity ana = seedClientes();
         seedVeiculos();
         seedUsuarios(ana);
-        seedInsumos();
         seedServicos();
         log.info("=== [DEV] Carga concluída ===");
     }
@@ -132,24 +126,6 @@ public class DevDataLoader implements CommandLineRunner {
         log.info("[DEV]   ana.portal@teste.com   / cliente123   (CLIENTE)");
     }
 
-    private void seedInsumos() {
-        if (insumosRepository.count() > 0) {
-            log.info("[DEV] Insumos já existem, pulando.");
-            return;
-        }
-
-        insumosRepository.save(insumo("Óleo de Motor 5W30",    new BigDecimal("45.90"),  50, 10, "litro"));
-        insumosRepository.save(insumo("Filtro de Óleo",        new BigDecimal("22.50"),  40, 10, "unidade"));
-        insumosRepository.save(insumo("Filtro de Ar",          new BigDecimal("35.00"),  30, 5,  "unidade"));
-        insumosRepository.save(insumo("Pastilha de Freio",     new BigDecimal("89.90"),  20, 5,  "par"));
-        insumosRepository.save(insumo("Fluido de Freio DOT 4", new BigDecimal("18.00"),  25, 5,  "litro"));
-        insumosRepository.save(insumo("Vela de Ignição",       new BigDecimal("12.00"), 100, 20, "unidade"));
-        insumosRepository.save(insumo("Correia Dentada",       new BigDecimal("120.00"), 15, 3,  "unidade"));
-        insumosRepository.save(insumo("Parafuso de Roda",      new BigDecimal("15.00"), 1, 10, "unidade"));
-
-        log.info("[DEV] 8 insumos criados.");
-    }
-
     private void seedServicos() {
         if (servicoRepository.count() > 0) {
             log.info("[DEV] Serviços já existem, pulando.");
@@ -201,18 +177,6 @@ public class DevDataLoader implements CommandLineRunner {
         e.setDescricao(descricao);
         e.setPreco(preco);
         e.setTempoEstimadoHoras(Duration.ofHours(horas));
-        e.setAtivo(true);
-        return e;
-    }
-
-    private InsumosJpaEntity insumo(String nome, BigDecimal preco, int estoqueAtual,
-                                    int estoqueMinimo, String unidade) {
-        InsumosJpaEntity e = new InsumosJpaEntity();
-        e.setNome(nome);
-        e.setPrecoUnitario(preco);
-        e.setEstoqueAtual(estoqueAtual);
-        e.setEstoqueMinimo(estoqueMinimo);
-        e.setUnidade(unidade);
         e.setAtivo(true);
         return e;
     }

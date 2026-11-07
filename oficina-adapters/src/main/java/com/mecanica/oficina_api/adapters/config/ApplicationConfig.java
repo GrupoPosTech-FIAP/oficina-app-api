@@ -6,15 +6,6 @@ import com.mecanica.oficina_api.application.cliente.usecase.CadastrarClienteUseC
 import com.mecanica.oficina_api.application.cliente.usecase.ConsultarClienteUseCase;
 import com.mecanica.oficina_api.application.cliente.usecase.DeletarClienteUseCase;
 import com.mecanica.oficina_api.application.cliente.usecase.ListarClientesUseCase;
-import com.mecanica.oficina_api.application.insumo.gateway.InsumosGateway;
-import com.mecanica.oficina_api.application.insumo.gateway.NotificarEstoqueBaixoGateway;
-import com.mecanica.oficina_api.application.insumo.usecase.AlterarInsumoUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.AtivarInsumoUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.CadastrarInsumoUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.ConsultarInsumoUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.InativarInsumoUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.ListarInsumosUseCase;
-import com.mecanica.oficina_api.application.insumo.usecase.RegistrarCompraUseCase;
 import com.mecanica.oficina_api.application.ordemservico.gateway.NotificadorClienteGateway;
 import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGateway;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
@@ -76,36 +67,6 @@ public class ApplicationConfig {
     @Bean
     DeletarClienteUseCase deletarClienteUseCase(ClienteGateway gateway) {
         return new DeletarClienteUseCase(gateway);
-    }
-
-    /* Insumos */
-    @Bean
-    CadastrarInsumoUseCase cadastrarInsumoUseCase(InsumosGateway insumosGateway) {
-        return new CadastrarInsumoUseCase(insumosGateway);
-    }
-    @Bean
-    ConsultarInsumoUseCase consultarInsumoUseCase(InsumosGateway insumosGateway) {
-        return new ConsultarInsumoUseCase(insumosGateway);
-    }
-    @Bean
-    ListarInsumosUseCase listarInsumosUseCase(InsumosGateway insumosGateway) {
-        return new ListarInsumosUseCase(insumosGateway);
-    }
-    @Bean
-    AlterarInsumoUseCase alterarInsumoUseCase(InsumosGateway insumosGateway, NotificarEstoqueBaixoGateway notificarEstoqueBaixoGateway) {
-        return new AlterarInsumoUseCase(insumosGateway, notificarEstoqueBaixoGateway);
-    }
-    @Bean
-    AtivarInsumoUseCase ativarInsumoUseCase(InsumosGateway insumosGateway) {
-        return new AtivarInsumoUseCase(insumosGateway);
-    }
-    @Bean
-    InativarInsumoUseCase inativarInsumoUseCase(InsumosGateway insumosGateway) {
-        return new InativarInsumoUseCase(insumosGateway);
-    }
-    @Bean
-    RegistrarCompraUseCase registrarCompraUseCase(InsumosGateway insumosGateway) {
-        return new RegistrarCompraUseCase(insumosGateway);
     }
 
     /* Serviço */

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mecanica.oficina_api.adapters.persistence.ClienteJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.UsuarioJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.repository.ClienteSpringDataRepository;
-import com.mecanica.oficina_api.adapters.persistence.repository.InsumosSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.OrdemServicoSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.ServicoSpringDataRepository;
 import com.mecanica.oficina_api.adapters.persistence.repository.UsuarioSpringDataRepository;
@@ -40,7 +39,6 @@ public abstract class BaseIntegrationTest extends PostgresTestcontainersSupport 
     @Autowired protected ClienteSpringDataRepository clienteRepository;
     @Autowired protected VeiculoSpringDataRepository veiculoRepository;
     @Autowired protected OrdemServicoSpringDataRepository ordemServicoRepository;
-    @Autowired protected InsumosSpringDataRepository insumosRepository;
     @Autowired protected ServicoSpringDataRepository servicoRepository;
     @Autowired protected PasswordEncoder passwordEncoder;
 
@@ -55,7 +53,6 @@ public abstract class BaseIntegrationTest extends PostgresTestcontainersSupport 
                 .build();
 
         ordemServicoRepository.deleteAll();
-        insumosRepository.deleteAllInBatch();
         servicoRepository.deleteAllInBatch();
         veiculoRepository.deleteAllInBatch();
         clienteRepository.deleteAllInBatch();

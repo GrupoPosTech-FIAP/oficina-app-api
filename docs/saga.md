@@ -60,10 +60,11 @@ do status atual (fora de ordem ou repetido) é registrado com `descartado = true
 | `EstoqueInsuficiente` | Orçamento aprovado | — (a baixa confere tudo antes de alterar) | `CANCELADA` |
 | Pagamento recusado ou expirado | Estoque baixado | inventory devolve os insumos → `EstoqueEstornado` | `CANCELADA` |
 | `ExecucaoFalhou` | Estoque baixado e pagamento confirmado | inventory devolve os insumos → `EstoqueEstornado`; billing reembolsa no Mercado Pago → `PagamentoEstornado` | `CANCELADA` |
+| Pagamento aprovado depois da expiração ou da recusa | OS já cancelada e insumos devolvidos | billing reembolsa esse pagamento → `PagamentoEstornado` (só histórico) | `CANCELADA` |
 
 As compensações são idempotentes: o inventory guarda o que baixou por OS e só estorna uma
-vez; o billing só estorna cobrança `PAGO`, e o reembolso usa uma chave de idempotência fixa
-por pagamento.
+vez; o billing só reembolsa um pagamento que ainda não registrou como estornado, e o reembolso
+usa uma chave de idempotência fixa por pagamento.
 
 ## Histórico
 

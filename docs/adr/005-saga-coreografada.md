@@ -291,6 +291,12 @@ mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
   | Falha em | O que já aconteceu | Compensação | Estado final da OS |
   |---|---|---|---|
   | Pagamento aprovado após expiração/recusa | OS cancelada, estoque devolvido | billing reembolsa no MP → `PagamentoEstornado` | `CANCELADA` |
+- **Trava pessimista no estoque.** Toda alteração de saldo no inventory lê o insumo com
+  `SELECT ... FOR UPDATE` e segura a linha até o commit, travando os insumos de um pedido em ordem
+  crescente de id (sem deadlock). Duas OS disputando o último item não passam juntas: a segunda
+  espera e publica `EstoqueInsuficiente`. Como a trava fica no banco, vale com várias réplicas
+  consumindo a fila. Lock otimista (`@Version`) foi descartado porque os endpoints REST do
+  inventory leem e gravam em chamadas separadas e precisariam carregar a versão pelo domínio.
 - **Cenários BDD** (Cucumber, em português) em
   `oficina-app-api/oficina-infrastructure/src/test/resources/features/saga_ordem_servico.feature`:
   caminho feliz, as cinco compensações antes da execução, falha na execução com estornos,
@@ -301,5 +307,3 @@ mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
   tabela `clientes` do `oficina_db`. Não afeta a Saga.
 - **SNS/SQS na `LabRole`:** a topologia foi validada só no LocalStack. Falta aplicar o
   `messaging.tf` numa sessão do Learner Lab; RabbitMQ no cluster continua como plano B.
-- **Concorrência no estoque:** a baixa confere saldo e baixa na mesma transação, mas sem lock
-  otimista; duas OS disputando o último item podem passar juntas.

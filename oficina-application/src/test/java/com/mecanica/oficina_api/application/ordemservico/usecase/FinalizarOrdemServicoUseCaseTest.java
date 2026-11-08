@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.mecanica.oficina_api.application.ordemservico.RegistroEventosOrdemServico;
 import com.mecanica.oficina_api.application.ordemservico.gateway.NotificadorClienteGateway;
 import com.mecanica.oficina_api.application.ordemservico.gateway.OrdemServicoGateway;
 import com.mecanica.oficina_api.application.ordemservico.output.NotificacaoCliente;
@@ -37,6 +38,9 @@ class FinalizarOrdemServicoUseCaseTest {
     @Mock
     private NotificadorClienteGateway notificadorClienteGateway;
 
+    @Mock
+    private RegistroEventosOrdemServico eventos;
+
     @InjectMocks
     private FinalizarOrdemServicoUseCase useCase;
 
@@ -63,6 +67,9 @@ class FinalizarOrdemServicoUseCaseTest {
         verify(notificadorClienteGateway).notificar(captor.capture());
         assertThat(captor.getValue().tipo()).isEqualTo(TipoNotificacaoCliente.FINALIZACAO_OS);
         assertThat(captor.getValue().ordemServicoId()).isEqualTo(OS_ID);
+
+        verify(eventos).publicar("ExecucaoConcluida", resultado, OrdemServicoStatus.EM_EXECUCAO,
+                java.util.Map.of("ordemServicoId", OS_ID, "concluidaEm", resultado.getDataFinal().toString()), null);
     }
 
     @Test

@@ -58,4 +58,12 @@ public record NotificacaoCliente(
                 os.getClienteId(),
                 os.getVeiculoId());
     }
+
+    public static NotificacaoCliente cancelada(OrdemServico os) {
+        return new NotificacaoCliente(
+                TipoNotificacaoCliente.CANCELADA,
+                os.getId(),
+                os.getClienteId(),
+                os.getVeiculoId());
+    }
 }

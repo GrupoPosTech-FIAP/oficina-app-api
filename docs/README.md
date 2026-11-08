@@ -7,6 +7,7 @@
 - [ecossistema.md](ecossistema.md) — Visão completa (diagrama de nuvem, fluxo de autenticação, dependências Terraform).
 - [arquitetura.md](arquitetura.md) — Clean Architecture, módulos, fluxo de dados.
 - [mensageria.md](mensageria.md) — SNS/SQS, outbox, consumidor idempotente e LocalStack.
+- [saga.md](saga.md) — Saga da OS: máquina de estados, compensações e histórico.
 - [banco-de-dados.md](banco-de-dados.md) — Justificativa do PostgreSQL, diagrama ER e ciclo de vida da OS.
 
 ## ADRs (Architecture Decision Records)

@@ -7,7 +7,8 @@ public enum TipoNotificacaoCliente {
     ENVIO_ORCAMENTO,
     EM_EXECUCAO,
     FINALIZACAO_OS,
-    ENTREGUE;
+    ENTREGUE,
+    CANCELADA;
 
     public String chaveLog() {
         return switch (this) {
@@ -17,6 +18,7 @@ public enum TipoNotificacaoCliente {
             case EM_EXECUCAO -> "execucao_os";
             case FINALIZACAO_OS -> "finalizacao_os";
             case ENTREGUE -> "entraga_veiculo";
+            case CANCELADA -> "cancelamento_os";
         };
     }
 }

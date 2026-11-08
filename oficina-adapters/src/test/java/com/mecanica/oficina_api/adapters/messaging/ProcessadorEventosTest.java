@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,8 +33,8 @@ class ProcessadorEventosTest {
         RuntimeException falha;
 
         @Override
-        public String eventType() {
-            return "OrcamentoGerado";
+        public Set<String> eventTypes() {
+            return Set.of("OrcamentoGerado");
         }
 
         @Override

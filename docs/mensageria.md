@@ -66,12 +66,15 @@ mensagem para a fila.
 ```java
 @Component
 class OrcamentoGeradoManipulador implements ManipuladorEvento {
-    public String eventType() { return "OrcamentoGerado"; }
+    public Set<String> eventTypes() { return Set.of("OrcamentoGerado"); }
     public void tratar(EventoEnvelope evento) {
         // traduz evento.payload() e chama o caso de uso
     }
 }
 ```
+
+Na OS, um único `EventosSagaOrdemServicoManipulador` trata todos os eventos recebidos e
+delega ao `ProcessarEventoSagaUseCase` (ver [saga.md](saga.md)).
 
 Lembre de incluir o `eventType` na assinatura da fila em `messaging.tf` e em
 `localstack/init-mensageria.sh`.

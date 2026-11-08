@@ -15,12 +15,14 @@ public interface OrdemServicoSpringDataRepository extends JpaRepository<OrdemSer
     List<OrdemServicoJpaEntity> findByStatus(String status);
 
     @Query("SELECT o FROM OrdemServicoJpaEntity o " +
-           "WHERE o.status NOT IN ('FINALIZADA', 'ENTREGUE') " +
+           "WHERE o.status NOT IN ('FINALIZADA', 'ENTREGUE', 'CANCELADA') " +
            "ORDER BY CASE o.status " +
            "  WHEN 'EM_EXECUCAO' THEN 1 " +
-           "  WHEN 'AGUARDANDO_APROVACAO' THEN 2 " +
-           "  WHEN 'EM_DIAGNOSTICO' THEN 3 " +
-           "  WHEN 'RECEBIDA' THEN 4 " +
-           "  ELSE 5 END ASC, o.dataCriacao ASC")
+           "  WHEN 'AGUARDANDO_EXECUCAO' THEN 2 " +
+           "  WHEN 'AGUARDANDO_PAGAMENTO' THEN 3 " +
+           "  WHEN 'AGUARDANDO_APROVACAO' THEN 4 " +
+           "  WHEN 'EM_DIAGNOSTICO' THEN 5 " +
+           "  WHEN 'RECEBIDA' THEN 6 " +
+           "  ELSE 7 END ASC, o.dataCriacao ASC")
     List<OrdemServicoJpaEntity> findAtivasOrdenadas();
 }

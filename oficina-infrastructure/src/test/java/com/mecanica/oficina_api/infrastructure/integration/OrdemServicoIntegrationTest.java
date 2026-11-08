@@ -22,6 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class OrdemServicoIntegrationTest extends BaseIntegrationTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mecanica.oficina_api.adapters.messaging.ProcessadorEventos processadorEventos;
+
     private ClienteJpaEntity salvarCliente() {
         return clienteRepository.save(cliente("Ana Souza", "52998224725", "ana@teste.com"));
     }
@@ -87,6 +90,9 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-diagnostico")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("EM_DIAGNOSTICO"));
+
+        // orçamento e pagamento acontecem no billing; aqui chegam como eventos da Saga
+        SagaIntegrationSupport.liberarParaExecucao(mockMvc, this::comToken, processadorEventos, osId, servicoId);
 
         IniciarExecucaoRequest iniciarReq = new IniciarExecucaoRequest(List.of(servicoId));
         mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")

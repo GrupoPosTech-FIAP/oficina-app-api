@@ -280,6 +280,17 @@ mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
   porque o account ID muda a cada sessão do Learner Lab; não há remote state para isso. Ordem:
   `oficina-infra-cluster` → `oficina-infra-database` → serviços (os, billing e inventory em
   qualquer ordem, já que as mensagens esperam na fila).
+- **Pagamento que chega tarde é reembolsado.** Se o webhook `approved` chegar com a cobrança
+  já `CANCELADO` (expirada) ou `RECUSADO`, a OS já foi cancelada e o estoque devolvido. O
+  billing reembolsa esse pagamento no Mercado Pago, marca a cobrança como `ESTORNADO` com o
+  `paymentId` e publica `PagamentoEstornado` (motivo `PAGAMENTO_APOS_EXPIRACAO` ou
+  `PAGAMENTO_APOS_RECUSA`), que entra só no histórico da OS. Um segundo pagamento de cobrança
+  já paga é reembolsado do mesmo jeito (`PAGAMENTO_DUPLICADO`), sem mudar a cobrança. Isso
+  acrescenta uma linha à tabela de compensações (item 7):
+
+  | Falha em | O que já aconteceu | Compensação | Estado final da OS |
+  |---|---|---|---|
+  | Pagamento aprovado após expiração/recusa | OS cancelada, estoque devolvido | billing reembolsa no MP → `PagamentoEstornado` | `CANCELADA` |
 - **Cenários BDD** (Cucumber, em português) em
   `oficina-app-api/oficina-infrastructure/src/test/resources/features/saga_ordem_servico.feature`:
   caminho feliz, as cinco compensações antes da execução, falha na execução com estornos,
@@ -290,8 +301,5 @@ mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
   tabela `clientes` do `oficina_db`. Não afeta a Saga.
 - **SNS/SQS na `LabRole`:** a topologia foi validada só no LocalStack. Falta aplicar o
   `messaging.tf` numa sessão do Learner Lab; RabbitMQ no cluster continua como plano B.
-- **Pagamento depois da expiração:** se o webhook `approved` chegar depois de a cobrança ter
-  expirado (OS já `CANCELADA`), hoje o webhook falha e o pagamento não é reembolsado. O
-  tratamento esperado é estornar automaticamente.
 - **Concorrência no estoque:** a baixa confere saldo e baixa na mesma transação, mas sem lock
   otimista; duas OS disputando o último item podem passar juntas.

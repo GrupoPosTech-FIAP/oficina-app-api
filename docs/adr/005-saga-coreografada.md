@@ -62,8 +62,8 @@ histórico" e serve de *saga log* para auditoria e para o vídeo de demonstraç�
   assina os tópicos de que precisa com *filter policy* sobre o atributo `eventType`.
 - Cada fila tem DLQ com `maxReceiveCount = 5` e alarme no CloudWatch quando a DLQ fica
   com mensagens.
-- Provisionamento via Terraform em um módulo novo (`oficina-infra-messaging` ou dentro do
-  `oficina-infra-cluster`), exportando ARNs/URLs por remote state como os demais repos.
+- Provisionamento via Terraform em `oficina-infra-cluster/messaging.tf` (ver
+  [Decisões tomadas na implementação](#decisões-tomadas-na-implementação)).
 - Filas **Standard** (não FIFO): a ordem é garantida pelas regras de transição de estado
   (item 5), e não pela fila.
 
@@ -92,7 +92,7 @@ Context, para o rastreamento distribuído no New Relic).
 
 | # | Evento | Produtor | Consumidores | Payload principal |
 |---|---|---|---|---|
-| 1 | `DiagnosticoConcluido` | os-service | billing | `ordemServicoId`, `clienteId`, `veiculoId`, `servicos[{servicoId, quantidade}]`, `insumos[{insumoId, quantidade}]` |
+| 1 | `DiagnosticoConcluido` | os-service | billing | `ordemServicoId`, `clienteId`, `veiculoId`, `servicos[{servicoId, descricao, quantidade, precoUnitario}]`, `insumos[{insumoId, descricao, quantidade, precoUnitario}]` |
 | 2 | `OrcamentoGerado` | billing | os | `ordemServicoId`, `orcamentoId`, `valorTotal` |
 | 3 | `OrcamentoAprovado` | billing | inventory, os | `ordemServicoId`, `orcamentoId`, `insumos[{insumoId, quantidade}]` |
 | 4 | `EstoqueBaixado` | inventory | billing, os | `ordemServicoId`, `itens[{insumoId, quantidade}]` |
@@ -156,7 +156,7 @@ sequenceDiagram
     participant E as execution-service
 
     OS->>B: DiagnosticoConcluido
-    B->>B: gera orçamento (preços via CatalogoGateway)
+    B->>B: gera orçamento (preços vêm no evento)
     B->>OS: OrcamentoGerado → AGUARDANDO_APROVACAO
     Cli->>B: POST /billing/orcamentos/{id}/aprovar
     B->>I: OrcamentoAprovado
@@ -242,7 +242,7 @@ para a DLQ do billing e o alarme sinaliza intervenção manual.
   Step Functions tem restrições no Learner Lab. Com quatro serviços e um fluxo linear, a
   coreografia cobre o caso com menos peças.
 - **REST síncrono encadeado:** acoplamento temporal, sem compensação natural e com risco
-  de cascata de falhas. Mantido apenas para consultas (ex.: `CatalogoGateway` do billing).
+  de cascata de falhas. Mantido apenas para consultas fora da Saga.
 - **Kafka (MSK) / RabbitMQ:** o MSK é caro e pesado para o Learner Lab; RabbitMQ no próprio
   EKS exigiria operar persistência e alta disponibilidade. SNS/SQS são gerenciados e já
   integram com a conta. RabbitMQ no cluster fica como plano B se a `LabRole` bloquear SNS/SQS.
@@ -250,13 +250,48 @@ para a DLQ do billing e o alarme sinaliza intervenção manual.
   SNS FIFO + SQS FIFO e limitam o throughput. As regras de transição já tornam a ordem
   irrelevante.
 
+## Decisões tomadas na implementação
+Os pontos que estavam em aberto nesta proposta foram resolvidos ao implementar a Saga. A
+mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
+`oficina-inventory-service#1` e `oficina-infra-cluster#5`, e os eventos em `oficina-app-api#41`,
+`oficina-billing-service#2`, `oficina-inventory-service#2` e `oficina-infra-cluster#6`.
+
+- **`OrcamentoNegado` cancela a OS** (`AGUARDANDO_APROVACAO → CANCELADA`). Voltar para
+  `EM_DIAGNOSTICO` exigiria uma transição de volta na máquina de estados e um segundo ciclo
+  de orçamento para a mesma OS. Se o cliente quiser renegociar, abre-se uma OS nova. No billing
+  o `GerarOrcamentoUseCase` continua aceitando um novo orçamento depois de `NEGADO` ou
+  `EXPIRADO`, para manter essa porta aberta.
+- **A execução fica no os-service por enquanto.** Os endpoints REST de execução publicam
+  `ExecucaoIniciada`, `ExecucaoConcluida` e `ExecucaoFalhou` no tópico `oficina-os-events`
+  (`PATCH /ordem-servico/{id}/falhar-execucao` foi criado para a falha). Billing e inventory
+  assinam `ExecucaoFalhou` tanto no tópico da OS quanto no `oficina-execution-events`, que
+  já existe vazio. Quando o `oficina-execution-service` for criado, basta ele publicar no
+  próprio tópico e a OS deixar de publicar esses eventos; os consumidores não mudam. Os
+  manipuladores da OS para os três eventos já estão prontos para esse dia.
+- **Preços no `DiagnosticoConcluido`.** O evento leva `servicos[{servicoId, descricao,
+  quantidade, precoUnitario}]` com preço do catálogo da própria OS e `insumos[{insumoId,
+  descricao, quantidade, precoUnitario}]` com o preço informado no diagnóstico. O billing gera
+  o orçamento só com o evento, sem chamar o `CatalogoGateway` por REST no meio da Saga.
+- **`iniciar-execucao` exige `AGUARDANDO_EXECUCAO`**, ou seja, pagamento confirmado. O atalho
+  anterior a partir de `EM_DIAGNOSTICO`/`AGUARDANDO_APROVACAO` foi removido.
+- **Terraform e ordem de deploy.** Tópicos, filas, DLQs, assinaturas e alarmes ficam em
+  `oficina-infra-cluster/messaging.tf`, e não num módulo separado. Os workflows de deploy dos
+  serviços resolvem ARN e URL pelo nome (`aws sns list-topics` / `aws sqs get-queue-url`),
+  porque o account ID muda a cada sessão do Learner Lab; não há remote state para isso. Ordem:
+  `oficina-infra-cluster` → `oficina-infra-database` → serviços (os, billing e inventory em
+  qualquer ordem, já que as mensagens esperam na fila).
+- **Cenários BDD** (Cucumber, em português) em
+  `oficina-app-api/oficina-infrastructure/src/test/resources/features/saga_ordem_servico.feature`:
+  caminho feliz, as cinco compensações antes da execução, falha na execução com estornos,
+  execução sem pagamento, evento fora de ordem e evento duplicado.
+
 ## Pontos em aberto
-- `OrcamentoNegado` cancela a OS ou a devolve para `EM_DIAGNOSTICO`? O `GerarOrcamentoUseCase`
-  já aceita gerar novo orçamento após `NEGADO`.
-- Criar o `oficina-execution-service` ou, como etapa intermediária, manter execução no
-  os-service publicando `ExecucaoIniciada/Concluida/Falhou`.
-- Papel do `oficina-customer-service`: se assumir clientes, o `auth-gateway` deixa de ler a
-  tabela `clientes` do `oficina_db`.
-- Onde ficam o Terraform das filas/tópicos e a ordem de deploy atualizada.
-- Cenário BDD (Cucumber) do fluxo completo e de pelo menos uma compensação, para o requisito
-  de testes.
+- **Papel do `oficina-customer-service`:** se assumir clientes, o `auth-gateway` deixa de ler a
+  tabela `clientes` do `oficina_db`. Não afeta a Saga.
+- **SNS/SQS na `LabRole`:** a topologia foi validada só no LocalStack. Falta aplicar o
+  `messaging.tf` numa sessão do Learner Lab; RabbitMQ no cluster continua como plano B.
+- **Pagamento depois da expiração:** se o webhook `approved` chegar depois de a cobrança ter
+  expirado (OS já `CANCELADA`), hoje o webhook falha e o pagamento não é reembolsado. O
+  tratamento esperado é estornar automaticamente.
+- **Concorrência no estoque:** a baixa confere saldo e baixa na mesma transação, mas sem lock
+  otimista; duas OS disputando o último item podem passar juntas.

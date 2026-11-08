@@ -86,5 +86,13 @@ falha na execução.
 - `SagaOrdemServicoIntegrationTest` (Postgres via Testcontainers): diagnóstico publica os itens
   precificados; caminho até a execução com falha e compensações; estoque insuficiente; evento
   fora de ordem; execução bloqueada sem pagamento.
+- Cenários BDD (Cucumber, em português) em
+  [`saga_ordem_servico.feature`](../oficina-infrastructure/src/test/resources/features/saga_ordem_servico.feature):
+  caminho feliz até a finalização, as cinco compensações antes da execução (orçamento negado ou
+  expirado, estoque insuficiente, pagamento recusado ou expirado), falha na execução com estornos,
+  execução sem pagamento, evento fora de ordem e evento duplicado. Os passos ficam em
+  `infrastructure/bdd/SagaOrdemServicoSteps` e rodam no `./mvnw test` pelo `RunCucumberTest`
+  (precisa de Docker). O relatório sai em `oficina-infrastructure/target/cucumber-report.html`.
+  Para rodar só eles: `./mvnw -pl oficina-infrastructure -am test -Dtest=RunCucumberTest -Dsurefire.failIfNoSpecifiedTests=false`.
 - Os passos de billing e inventory têm testes de integração próprios em cada repositório
   (`SagaBillingIntegracaoTest`, `SagaEstoqueIntegracaoTest`).

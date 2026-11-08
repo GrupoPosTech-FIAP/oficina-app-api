@@ -5,6 +5,7 @@ import com.mecanica.oficina_api.adapters.persistence.repository.OutboxEventoSpri
 import com.mecanica.oficina_api.application.evento.gateway.PublicadorEventosGateway;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -37,7 +38,8 @@ public class OutboxPublicadorEventos implements PublicadorEventosGateway {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void publicar(String eventType, String sagaId, Map<String, Object> payload) {
-        Instant agora = clock.instant();
+        // Microssegundos: é a precisão do timestamp no banco, então envelope e outbox registram o mesmo instante
+        Instant agora = clock.instant().truncatedTo(ChronoUnit.MICROS);
         EventoEnvelope envelope = new EventoEnvelope(
                 UUID.randomUUID().toString(),
                 eventType,

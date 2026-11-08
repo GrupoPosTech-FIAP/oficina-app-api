@@ -25,7 +25,20 @@
 
 	<properties>
 		<java.version>25</java.version>
-	</properties>	
+		<aws-sdk.version>2.57.11</aws-sdk.version>
+	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- AWS SDK v2: SNS/SQS da mensageria da Saga (ADR 005) -->
+			<dependency>
+				<groupId>software.amazon.awssdk</groupId>
+				<artifactId>bom</artifactId>
+				<version>${aws-sdk.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>	
 
     <build>
         <pluginManagement>

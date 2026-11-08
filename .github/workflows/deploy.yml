@@ -99,6 +99,19 @@ jobs:
           sed -i "s|jdbc:postgresql://[^:]*:5432|jdbc:postgresql://${{ inputs.rds_endpoint }}:5432|" \
             k8s/overlays/aws/configmap-rds.yaml
 
+      # Tópico e fila são criados pelo oficina-infra-cluster (messaging.tf). ARN e URL
+      # contêm o account ID da sessão, então são resolvidos aqui pelo nome.
+      - name: Apontar a mensageria (SNS/SQS)
+        run: |
+          TOPICO_ARN=$(aws sns list-topics --query "Topics[?ends_with(TopicArn, ':oficina-os-events')].TopicArn | [0]" --output text)
+          FILA_URL=$(aws sqs get-queue-url --queue-name oficina-os-queue --query QueueUrl --output text)
+          if [ -z "$TOPICO_ARN" ] || [ "$TOPICO_ARN" = "None" ]; then
+            echo "::error::Tópico oficina-os-events não encontrado. Rode o deploy do oficina-infra-cluster antes."
+            exit 1
+          fi
+          sed -i "s|MENSAGERIA_TOPICO_ARN:.*|MENSAGERIA_TOPICO_ARN: ${TOPICO_ARN}|" k8s/overlays/aws/configmap-rds.yaml
+          sed -i "s|MENSAGERIA_FILA_URL:.*|MENSAGERIA_FILA_URL: ${FILA_URL}|" k8s/overlays/aws/configmap-rds.yaml
+
       - name: Deploy no cluster (aplica os manifestos)
         run: kubectl apply -k k8s/overlays/aws
         

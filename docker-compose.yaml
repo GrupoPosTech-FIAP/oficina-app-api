@@ -15,6 +15,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  localstack:
+    # Versão fixada: SNS/SQS locais para a mensageria da Saga (ADR 005)
+    image: localstack/localstack:4.4.0
+    container_name: oficina_localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sns,sqs
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./localstack/init-mensageria.sh:/etc/localstack/init/ready.d/init-mensageria.sh
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/mensageria-pronta"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   app:
     build: .
     container_name: oficina_app
@@ -26,6 +42,14 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_PROFILES_ACTIVE: dev
+      # Mensageria (LocalStack)
+      MENSAGERIA_HABILITADA: "true"
+      MENSAGERIA_ENDPOINT: http://localstack:4566
+      MENSAGERIA_TOPICO_ARN: arn:aws:sns:us-east-1:000000000000:oficina-os-events
+      MENSAGERIA_FILA_URL: http://localstack:4566/000000000000/oficina-os-queue
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
       # Logs
       OTEL_SERVICE_NAME: oficina-api
       OTEL_TRACES_EXPORTER: otlp
@@ -36,6 +60,8 @@ services:
       OTEL_EXPORTER_OTLP_HEADERS: api-key=${NEW_RELIC_LICENSE_KEY}
     depends_on:
       postgres:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
 
 volumes:

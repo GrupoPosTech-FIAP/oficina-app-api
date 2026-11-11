@@ -13,6 +13,10 @@
 
     <artifactId>oficina-infrastructure</artifactId>
 
+    <properties>
+        <cucumber.version>8.0.4</cucumber.version>
+    </properties>
+
     <dependencies>
         <!-- Depende dos adapters (application e domain vêm transitivamente) -->
         <dependency>
@@ -70,6 +74,31 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>1.20.4</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- BDD: cenários da Saga em src/test/resources/features (executados por RunCucumberTest) -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

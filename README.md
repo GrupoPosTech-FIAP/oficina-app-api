@@ -30,11 +30,28 @@ Regras obrigatórias: nenhum módulo interno importa o externo; a camada `applic
 - **Usuários** — gestão de usuários e perfis de acesso
 - **Serviços** — catálogo de serviços com tempo médio de execução
 - **Insumos** — controle de estoque, compras e movimentação
-- **Ordens de Serviço** — fluxo completo com orçamento e ciclo de vida de status:
+- **Ordens de Serviço** — ciclo de vida coordenado com billing e inventory por uma Saga:
 
 ```
-RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA → ENTREGUE
+RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → AGUARDANDO_PAGAMENTO → AGUARDANDO_EXECUCAO
+         → EM_EXECUCAO → FINALIZADA → ENTREGUE                  (falhas: → CANCELADA)
 ```
+
+## Saga e compensações
+
+O fluxo da OS atravessa três serviços com bancos próprios, então a consistência é garantida
+por uma **Saga coreografada** sobre SNS/SQS ([ADR 005](docs/adr/005-saga-coreografada.md)):
+cada serviço faz sua transação local, grava o evento numa outbox e reage aos eventos dos
+outros. Quando um passo falha, eventos de compensação desfazem os anteriores:
+
+| Falha | Compensação | OS |
+|---|---|---|
+| Orçamento negado/expirado, estoque insuficiente | — | `CANCELADA` |
+| Pagamento recusado/expirado | inventory devolve os insumos | `CANCELADA` |
+| Falha na execução | inventory devolve os insumos e billing reembolsa no Mercado Pago | `CANCELADA` |
+
+Cada passo fica registrado em `GET /ordem-servico/{id}/historico`. Detalhes em
+[docs/saga.md](docs/saga.md) e [docs/mensageria.md](docs/mensageria.md).
 
 ## Como rodar
 
@@ -59,6 +76,7 @@ Para Minikube e AWS, ver os guias de execução em [docs/](docs/README.md).
 | Documento | Assunto |
 |---|---|
 | [docs/arquitetura.md](docs/arquitetura.md) | Clean Architecture, módulos, fluxo de dados, stack, PostgreSQL |
+| [docs/saga.md](docs/saga.md) | Saga da OS: máquina de estados, compensações, histórico |
 | [docs/execucao-local.md](docs/execucao-local.md) | Rodar localmente (Docker Compose / Minikube) |
 | [docs/deploy-aws.md](docs/deploy-aws.md) | Deploy manual na AWS (EKS + RDS via repos de infra) |
 | [docs/cicd-github-actions.md](docs/cicd-github-actions.md) | Deploy automatizado via GitHub Actions |

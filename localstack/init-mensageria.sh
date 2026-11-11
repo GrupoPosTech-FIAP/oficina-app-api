@@ -31,11 +31,13 @@ assinar() {
     --attributes "{\"RawMessageDelivery\":\"true\",\"FilterPolicy\":\"{\\\"eventType\\\":[${filtro%,}]}\"}" >/dev/null
 }
 
-assinar os        billing   "DiagnosticoConcluido"
+# enquanto não existe o oficina-execution-service, a execução roda na OS e ExecucaoFalhou sai do tópico da OS
+assinar os        billing   "DiagnosticoConcluido,ExecucaoFalhou"
 assinar inventory billing   "EstoqueBaixado"
 assinar execution billing   "ExecucaoFalhou"
 
 assinar billing   inventory "OrcamentoAprovado,PagamentoRecusado,PagamentoExpirado"
+assinar os        inventory "ExecucaoFalhou"
 assinar execution inventory "ExecucaoFalhou"
 
 assinar billing   os        "OrcamentoGerado,OrcamentoAprovado,OrcamentoNegado,OrcamentoExpirado,CobrancaCriada,PagamentoConfirmado,PagamentoRecusado,PagamentoExpirado,PagamentoEstornado"

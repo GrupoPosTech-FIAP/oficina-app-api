@@ -17,11 +17,11 @@ public class ListarPorUsuarioOrdemServicoUseCase {
     public List<MinhaOrdemServicoOutput> executar(String clienteId, OrdemServicoStatus status, String placa) {
 
         List<MinhaOrdemServicoOutput> osList = ordemServicoGateway.buscarPorCliente(clienteId);
-        List<String> prioridadeStauts = List.of("EM_EXECUCAO", "AGUARDANDO_APROVACAO", "EM_DIAGNOSTICO", "RECEBIDA");
+        List<String> prioridadeStauts = List.of("EM_EXECUCAO", "AGUARDANDO_EXECUCAO", "AGUARDANDO_PAGAMENTO", "AGUARDANDO_APROVACAO", "EM_DIAGNOSTICO", "RECEBIDA");
 
         List<MinhaOrdemServicoOutput> openOsList =
             osList.stream()
-                .filter(o -> !"FINALIZADA".equals(o.getStatus()) && !"ENTREGUE".equals(o.getStatus()))
+                .filter(o -> !"FINALIZADA".equals(o.getStatus()) && !"ENTREGUE".equals(o.getStatus()) && !"CANCELADA".equals(o.getStatus()))
                 .sorted(
                     Comparator.comparing((MinhaOrdemServicoOutput o) -> prioridadeStauts.indexOf(o.getStatus()))
                     .thenComparing(MinhaOrdemServicoOutput::dataCriacao)

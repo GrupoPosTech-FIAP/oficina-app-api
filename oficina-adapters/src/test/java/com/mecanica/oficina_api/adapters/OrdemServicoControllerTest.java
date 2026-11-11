@@ -9,7 +9,12 @@ import com.mecanica.oficina_api.adapters.web.OrdemServicoController;
 import com.mecanica.oficina_api.adapters.web.dto.request.CriarOrdemServicoRequest;
 import com.mecanica.oficina_api.adapters.web.dto.request.IniciarExecucaoRequest;
 import com.mecanica.oficina_api.adapters.web.presenter.OrdemServicoPresenter;
+import com.mecanica.oficina_api.application.ordemservico.input.ConcluirDiagnosticoInput;
+import com.mecanica.oficina_api.application.ordemservico.usecase.ConcluirDiagnosticoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
+import com.mecanica.oficina_api.application.ordemservico.usecase.FalharExecucaoUseCase;
+import com.mecanica.oficina_api.application.ordemservico.usecase.ListarHistoricoOrdemServicoUseCase;
+import com.mecanica.oficina_api.domain.ordemservico.HistoricoOrdemServico;
 import com.mecanica.oficina_api.application.ordemservico.usecase.CriarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.EntregarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarOrdemServicoUseCase;
@@ -69,6 +74,9 @@ class OrdemServicoControllerTest {
     @Mock private ListarServicosPorOSUseCase listarServicosPorOSUseCase;
     @Mock private IniciarServicoUseCase iniciarServicoUseCase;
     @Mock private FinalizarServicoUseCase finalizarServicoUseCase;
+    @Mock private ConcluirDiagnosticoUseCase concluirDiagnosticoUseCase;
+    @Mock private FalharExecucaoUseCase falharExecucaoUseCase;
+    @Mock private ListarHistoricoOrdemServicoUseCase listarHistoricoOrdemServicoUseCase;
 
     private static final String OS_ID = "os-1";
     private static final String VEICULO_ID = "veiculo-1";
@@ -81,6 +89,7 @@ class OrdemServicoControllerTest {
                 listarPorVeiculoOrdemServicoUseCase, iniciarDiagnosticoOrdemServicoUseCase,
                 iniciarExecucaoUseCase, finalizarOrdemServicoUseCase, entregarOrdemServicoUseCase,
                 listarServicosPorOSUseCase, iniciarServicoUseCase, finalizarServicoUseCase,
+                concluirDiagnosticoUseCase, falharExecucaoUseCase, listarHistoricoOrdemServicoUseCase,
                 new OrdemServicoPresenter());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -211,6 +220,75 @@ class OrdemServicoControllerTest {
 
         mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-diagnostico"))
                 .andExpect(status().isConflict());
+    }
+
+    // --- Saga ---
+
+    @Test
+    void deveConcluirDiagnosticoERetornar200() throws Exception {
+        var input = new ConcluirDiagnosticoInput(
+                List.of(new ConcluirDiagnosticoInput.Servico("servico-1", 1)),
+                List.of(new ConcluirDiagnosticoInput.Insumo("ins-1", 2, "Óleo", new BigDecimal("45.00"))),
+                "trocar filtro");
+        when(concluirDiagnosticoUseCase.executar(OS_ID, input))
+                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID, OrdemServicoStatus.EM_DIAGNOSTICO, null, null));
+
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/concluir-diagnostico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"servicos":[{"servicoId":"servico-1","quantidade":1}],
+                                 "insumos":[{"insumoId":"ins-1","quantidade":2,"descricao":"Óleo","precoUnitario":45.00}],
+                                 "observacoes":"trocar filtro"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EM_DIAGNOSTICO"));
+    }
+
+    @Test
+    void deveRetornar400AoConcluirDiagnosticoComInsumoSemPreco() throws Exception {
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/concluir-diagnostico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"insumos\":[{\"insumoId\":\"ins-1\",\"quantidade\":1,\"descricao\":\"Óleo\"}]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deveRegistrarFalhaNaExecucaoERetornar200() throws Exception {
+        when(falharExecucaoUseCase.executar(OS_ID, "peça indisponível"))
+                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID, OrdemServicoStatus.CANCELADA, null, null));
+
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/falhar-execucao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\"peça indisponível\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"));
+    }
+
+    @Test
+    void deveRetornar400AoFalharExecucaoSemMotivo() throws Exception {
+        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/falhar-execucao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\" \"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deveListarHistoricoDaOs() throws Exception {
+        when(listarHistoricoOrdemServicoUseCase.executar(OS_ID)).thenReturn(List.of(
+                new HistoricoOrdemServico(OS_ID, "OrcamentoGerado", HistoricoOrdemServico.Origem.RECEBIDO,
+                        OrdemServicoStatus.EM_DIAGNOSTICO, OrdemServicoStatus.AGUARDANDO_APROVACAO, false, "{}",
+                        java.time.Instant.parse("2026-11-08T10:00:00Z")),
+                new HistoricoOrdemServico(OS_ID, "DiagnosticoConcluido", HistoricoOrdemServico.Origem.PUBLICADO,
+                        null, OrdemServicoStatus.EM_DIAGNOSTICO, false, null,
+                        java.time.Instant.parse("2026-11-08T09:59:00Z"))));
+
+        mockMvc.perform(get("/ordem-servico/" + OS_ID + "/historico"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evento").value("OrcamentoGerado"))
+                .andExpect(jsonPath("$[0].origem").value("RECEBIDO"))
+                .andExpect(jsonPath("$[0].statusAnterior").value("EM_DIAGNOSTICO"))
+                .andExpect(jsonPath("$[0].statusAtual").value("AGUARDANDO_APROVACAO"))
+                .andExpect(jsonPath("$[1].statusAnterior").doesNotExist());
     }
 
     @Test

@@ -63,6 +63,7 @@ public class EmailNotificadorCliente implements NotificadorClienteGateway {
             case EM_EXECUCAO -> "Oficina — Ordem de Serviço em execução (OS " + n.ordemServicoId() + ")";
             case FINALIZACAO_OS  -> "Oficina — Seu veículo está pronto para retirada (OS " + n.ordemServicoId() + ")";
             case ENTREGUE -> "Oficina — Veículo entregue (OS " + n.ordemServicoId() + ")";
+            case CANCELADA -> "Oficina — Ordem de Serviço cancelada (OS " + n.ordemServicoId() + ")";
         };
     }
 
@@ -139,6 +140,18 @@ public class EmailNotificadorCliente implements NotificadorClienteGateway {
             Agradecemos a confiança em nossa oficina e esperamos atendê-lo novamente quando precisar.
 
             Tenha uma ótima viagem!
+
+            Atenciosamente,
+            Equipe Oficina
+            """.formatted(n.ordemServicoId());
+
+            case CANCELADA -> """
+            Olá,
+
+            A ordem de serviço %s foi cancelada. Se algum valor foi pago ou algum insumo foi
+            reservado, o estorno é feito automaticamente.
+
+            Em caso de dúvidas, entre em contato com a oficina.
 
             Atenciosamente,
             Equipe Oficina

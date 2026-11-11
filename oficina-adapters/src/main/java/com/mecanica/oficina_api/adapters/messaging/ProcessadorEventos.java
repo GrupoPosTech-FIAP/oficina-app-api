@@ -5,7 +5,6 @@ import com.mecanica.oficina_api.adapters.persistence.repository.EventoProcessado
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +32,8 @@ public class ProcessadorEventos {
                               TransactionOperations transacao,
                               Clock clock) {
         this.manipuladores = manipuladores.stream()
-                .collect(Collectors.toMap(ManipuladorEvento::eventType, Function.identity()));
+                .flatMap(m -> m.eventTypes().stream().map(tipo -> Map.entry(tipo, m)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         this.repository = repository;
         this.transacao = transacao;
         this.clock = clock;

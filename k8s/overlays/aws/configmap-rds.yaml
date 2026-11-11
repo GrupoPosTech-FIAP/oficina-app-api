@@ -5,3 +5,8 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: jdbc:postgresql://terraform-20260713234556452600000001.cdh7ifbthkmx.us-east-1.rds.amazonaws.com:5432/oficina_db
   SPRING_PROFILES_ACTIVE: dev
+  # Mensageria (ADR 005). ARN e URL dependem do account ID da sessão do Learner Lab:
+  # o deploy.yml resolve os valores reais pelo nome do tópico/fila antes do apply.
+  MENSAGERIA_HABILITADA: "true"
+  MENSAGERIA_TOPICO_ARN: arn:aws:sns:us-east-1:ACCOUNT_ID:oficina-os-events
+  MENSAGERIA_FILA_URL: https://sqs.us-east-1.amazonaws.com/ACCOUNT_ID/oficina-os-queue

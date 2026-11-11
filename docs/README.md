@@ -6,12 +6,14 @@
 ## Arquitetura e decisões
 - [ecossistema.md](ecossistema.md) — Visão completa (diagrama de nuvem, fluxo de autenticação, dependências Terraform).
 - [arquitetura.md](arquitetura.md) — Clean Architecture, módulos, fluxo de dados.
+- [mensageria.md](mensageria.md) — SNS/SQS, outbox, consumidor idempotente e LocalStack.
 - [banco-de-dados.md](banco-de-dados.md) — Justificativa do PostgreSQL, diagrama ER e ciclo de vida da OS.
 
 ## ADRs (Architecture Decision Records)
 - [adr/002-escolha-opentelemetry-newrelic.md](adr/002-escolha-opentelemetry-newrelic.md) — Escolha do OpenTelemetry + New Relic para Observabilidade
 - [adr/003-uso-de-hpa.md](adr/003-uso-de-hpa.md) — Uso de HPA (Horizontal Pod Autoscaler)
 - [adr/004-padrao-comunicacao-rest.md](adr/004-padrao-comunicacao-rest.md) — Padrão de Comunicação via API REST
+- [adr/005-saga-coreografada.md](adr/005-saga-coreografada.md) — Saga coreografada para o ciclo de vida da OS *(PR #39)*
 
 ## RFCs (Request for Comments)
 - [rfc/rfc-001-escolha-nuvem-aws.md](rfc/rfc-001-escolha-nuvem-aws.md) — Escolha da Nuvem AWS como Provedor Cloud

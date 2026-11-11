@@ -81,6 +81,15 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Mensageria (Saga coreografada - ADR 005) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sns</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+        </dependency>
         <!-- Email -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

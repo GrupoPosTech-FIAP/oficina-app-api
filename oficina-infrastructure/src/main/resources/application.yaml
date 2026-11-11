@@ -14,6 +14,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  task:
+    scheduling:
+      pool:
+        # relay da outbox + consumidor SQS (long polling) não podem disputar a mesma thread
+        size: 2
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -42,3 +47,14 @@ jwt:
 
 webhook:
   secret: ${WEBHOOK_SECRET:webhookSecretPadraoOficinaApi123456}
+
+# Mensageria da Saga (ADR 005). Desligada por padrão: os eventos são gravados na outbox,
+# mas só saem do serviço com MENSAGERIA_HABILITADA=true.
+mensageria:
+  habilitada: ${MENSAGERIA_HABILITADA:false}
+  produtor: oficina-app-api
+  topico-arn: ${MENSAGERIA_TOPICO_ARN:}
+  fila-url: ${MENSAGERIA_FILA_URL:}
+  regiao: ${AWS_REGION:us-east-1}
+  # LocalStack em dev (ex.: http://localhost:4566); vazio usa a AWS
+  endpoint: ${MENSAGERIA_ENDPOINT:}

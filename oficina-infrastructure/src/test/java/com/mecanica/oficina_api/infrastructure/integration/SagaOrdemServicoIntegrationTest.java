@@ -108,28 +108,25 @@ class SagaOrdemServicoIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    void falhaNaExecucaoCancelaEPublicaExecucaoFalhouParaAsCompensacoes() throws Exception {
+    void falhaNaExecucaoVindaDoExecutionServiceCancelaAOs() throws Exception {
         SagaIntegrationSupport.liberarParaExecucao(mockMvc, this::comToken, processador, osId, servicoId);
         assertThat(statusDaOs()).isEqualTo("AGUARDANDO_EXECUCAO");
 
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/falhar-execucao")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"motivo\":\"Bloco do motor trincado\"}")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CANCELADA"));
+        SagaIntegrationSupport.receberDaExecucao(processador, "ExecucaoIniciada", osId, "");
+        SagaIntegrationSupport.receberDaExecucao(processador, "ExecucaoFalhou", osId,
+                ",\"motivo\":\"Bloco do motor trincado\"");
+        assertThat(statusDaOs()).isEqualTo("CANCELADA");
 
         receber("EstoqueEstornado");
         receber("PagamentoEstornado");
 
         assertThat(publicados()).extracting(OutboxEventoJpaEntity::getEventType)
-                .containsExactly("DiagnosticoConcluido", "ExecucaoIniciada", "ExecucaoFalhou");
+                .containsExactly("DiagnosticoConcluido");
         assertThat(historico()).extracting(h -> h.get("evento")).containsExactly(
                 "DiagnosticoConcluido", "OrcamentoGerado", "OrcamentoAprovado", "EstoqueBaixado", "CobrancaCriada",
                 "PagamentoConfirmado", "ExecucaoIniciada", "ExecucaoFalhou", "EstoqueEstornado", "PagamentoEstornado");
-        assertThat(historico().get(7)).containsEntry("statusAtual", "CANCELADA").containsEntry("detalhe", "Bloco do motor trincado");
+        assertThat(historico().get(7)).containsEntry("statusAtual", "CANCELADA")
+                .hasEntrySatisfying("detalhe", d -> assertThat(d.toString()).contains("Bloco do motor trincado"));
     }
 
     @Test
@@ -154,8 +151,10 @@ class SagaOrdemServicoIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    void naoIniciaExecucaoSemPagamento() throws Exception {
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")))
-                .andExpect(status().isConflict());
+    void execucaoIniciadaSemPagamentoEDescartada() throws Exception {
+        SagaIntegrationSupport.receberDaExecucao(processador, "ExecucaoIniciada", osId, "");
+
+        assertThat(statusDaOs()).isEqualTo("EM_DIAGNOSTICO");
+        assertThat(historico()).singleElement().satisfies(h -> assertThat(h).containsEntry("descartado", true));
     }
 }

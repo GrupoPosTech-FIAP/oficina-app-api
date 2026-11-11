@@ -1,9 +1,7 @@
 package com.mecanica.oficina_api.adapters.web.presenter;
 
 import com.mecanica.oficina_api.adapters.web.dto.response.ServicoResponse;
-import com.mecanica.oficina_api.adapters.web.dto.response.TempoMedioServicoResponse;
 import com.mecanica.oficina_api.domain.servico.Servico;
-import com.mecanica.oficina_api.domain.servico.TempoMedioServico;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -72,16 +70,5 @@ class ServicoPresenterTest {
         List<ServicoResponse> responses = presenter.apresentar(List.<Servico>of());
 
         assertThat(responses).isEmpty();
-    }
-
-    @Test
-    void deveApresentarTempoMedioComTodosOsCampos() {
-        TempoMedioServico tempoMedio = new TempoMedioServico("servico-1", "Troca de óleo", 95.5);
-
-        TempoMedioServicoResponse response = presenter.apresentarTempoMedio(tempoMedio);
-
-        assertThat(response.getServicoId()).isEqualTo("servico-1");
-        assertThat(response.getNome()).isEqualTo("Troca de óleo");
-        assertThat(response.getTempoMedioEmMinutos()).isEqualTo(95.5);
     }
 }

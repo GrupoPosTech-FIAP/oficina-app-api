@@ -3,14 +3,12 @@ package com.mecanica.oficina_api.adapters.web;
 import com.mecanica.oficina_api.adapters.web.dto.request.AlterarServicoRequest;
 import com.mecanica.oficina_api.adapters.web.dto.request.CadastrarServicoRequest;
 import com.mecanica.oficina_api.adapters.web.dto.response.ServicoResponse;
-import com.mecanica.oficina_api.adapters.web.dto.response.TempoMedioServicoResponse;
 import com.mecanica.oficina_api.adapters.web.dto.response.ValidationErrorResponse;
 import com.mecanica.oficina_api.adapters.web.presenter.ServicoPresenter;
 import com.mecanica.oficina_api.application.servico.usecase.AlterarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.AtivarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.CadastrarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ConsultarServicoUseCase;
-import com.mecanica.oficina_api.application.servico.usecase.ConsultarTempoMedioUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.InativarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ListarServicosUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +33,6 @@ public class ServicoController {
 
     private final CadastrarServicoUseCase cadastrarServicoUseCase;
     private final ConsultarServicoUseCase consultarServicoUseCase;
-    private final ConsultarTempoMedioUseCase consultarTempoMedioUseCase;
     private final ListarServicosUseCase listarServicosUseCase;
     private final AlterarServicoUseCase alterarServicoUseCase;
     private final AtivarServicoUseCase ativarServicoUseCase;
@@ -44,7 +41,6 @@ public class ServicoController {
 
     public ServicoController(CadastrarServicoUseCase cadastrarServicoUseCase,
                              ConsultarServicoUseCase consultarServicoUseCase,
-                             ConsultarTempoMedioUseCase consultarTempoMedioUseCase,
                              ListarServicosUseCase listarServicosUseCase,
                              AlterarServicoUseCase alterarServicoUseCase,
                              AtivarServicoUseCase ativarServicoUseCase,
@@ -52,7 +48,6 @@ public class ServicoController {
                              ServicoPresenter presenter) {
         this.cadastrarServicoUseCase = cadastrarServicoUseCase;
         this.consultarServicoUseCase = consultarServicoUseCase;
-        this.consultarTempoMedioUseCase = consultarTempoMedioUseCase;
         this.listarServicosUseCase = listarServicosUseCase;
         this.alterarServicoUseCase = alterarServicoUseCase;
         this.ativarServicoUseCase = ativarServicoUseCase;
@@ -88,19 +83,6 @@ public class ServicoController {
     })
     public ResponseEntity<ServicoResponse> buscar(@PathVariable String id) {
         return ResponseEntity.ok(presenter.apresentar(consultarServicoUseCase.executar(id)));
-    }
-
-    @GetMapping("/{id}/tempo-medio")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ATENDENTE', 'MECANICO')")
-    @Operation(summary = "Buscar tempo médio de execução de um serviço por ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Serviço encontrado",
-            content = @Content(schema = @Schema())),
-        @ApiResponse(responseCode = "404", description = "Serviço não encontrado",
-            content = @Content(schema = @Schema()))
-    })
-    public ResponseEntity<TempoMedioServicoResponse> buscarTempoMedio(@PathVariable String id) {
-        return ResponseEntity.ok(presenter.apresentarTempoMedio(consultarTempoMedioUseCase.executar(id)));
     }
 
     @GetMapping

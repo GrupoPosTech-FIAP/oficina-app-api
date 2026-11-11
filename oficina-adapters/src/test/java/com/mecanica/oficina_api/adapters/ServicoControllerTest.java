@@ -14,11 +14,9 @@ import com.mecanica.oficina_api.application.servico.usecase.AlterarServicoUseCas
 import com.mecanica.oficina_api.application.servico.usecase.AtivarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.CadastrarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ConsultarServicoUseCase;
-import com.mecanica.oficina_api.application.servico.usecase.ConsultarTempoMedioUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.InativarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ListarServicosUseCase;
 import com.mecanica.oficina_api.domain.servico.Servico;
-import com.mecanica.oficina_api.domain.servico.TempoMedioServico;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -65,8 +63,6 @@ class ServicoControllerTest {
     @Mock
     private ConsultarServicoUseCase consultarServicoUseCase;
     @Mock
-    private ConsultarTempoMedioUseCase consultarTempoMedioUseCase;
-    @Mock
     private ListarServicosUseCase listarServicosUseCase;
     @Mock
     private AlterarServicoUseCase alterarServicoUseCase;
@@ -80,7 +76,7 @@ class ServicoControllerTest {
     @BeforeEach
     void setUp() {
         ServicoController controller = new ServicoController(
-                cadastrarServicoUseCase, consultarServicoUseCase, consultarTempoMedioUseCase,
+                cadastrarServicoUseCase, consultarServicoUseCase,
                 listarServicosUseCase, alterarServicoUseCase, ativarServicoUseCase,
                 inativarServicoUseCase, new ServicoPresenter());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -126,27 +122,6 @@ class ServicoControllerTest {
                 .thenThrow(new IllegalArgumentException("Serviço não encontrado"));
 
         mockMvc.perform(get("/servico/inexistente"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void deveBuscarTempoMedioERetornar200() throws Exception {
-        when(consultarTempoMedioUseCase.executar("servico-1"))
-                .thenReturn(new TempoMedioServico("servico-1", "Troca de óleo", 95.5));
-
-        mockMvc.perform(get("/servico/servico-1/tempo-medio"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.servicoId").value("servico-1"))
-                .andExpect(jsonPath("$.nome").value("Troca de óleo"))
-                .andExpect(jsonPath("$.tempoMedioEmMinutos").value(95.5));
-    }
-
-    @Test
-    void deveRetornar404AoBuscarTempoMedio_quandoServicoNaoEncontrado() throws Exception {
-        when(consultarTempoMedioUseCase.executar("inexistente"))
-                .thenThrow(new IllegalArgumentException("Serviço não encontrado"));
-
-        mockMvc.perform(get("/servico/inexistente/tempo-medio"))
                 .andExpect(status().isNotFound());
     }
 

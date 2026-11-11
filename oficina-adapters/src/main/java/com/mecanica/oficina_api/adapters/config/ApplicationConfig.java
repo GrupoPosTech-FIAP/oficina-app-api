@@ -15,25 +15,17 @@ import com.mecanica.oficina_api.application.ordemservico.usecase.ConcluirDiagnos
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.CriarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.EntregarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FalharExecucaoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarDiagnosticoOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarExecucaoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarHistoricoOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarOrdensServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorUsuarioOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorVeiculoOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.ListarServicosPorOSUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ProcessarEventoSagaUseCase;
 import com.mecanica.oficina_api.application.servico.gateway.ServicoGateway;
-import com.mecanica.oficina_api.application.servico.gateway.StatusServicoGateway;
 import com.mecanica.oficina_api.application.servico.usecase.AlterarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.AtivarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.CadastrarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ConsultarServicoUseCase;
-import com.mecanica.oficina_api.application.servico.usecase.ConsultarTempoMedioUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.InativarServicoUseCase;
 import com.mecanica.oficina_api.application.servico.usecase.ListarServicosUseCase;
 import com.mecanica.oficina_api.application.usuario.gateway.PasswordEncoder;
@@ -85,10 +77,6 @@ public class ApplicationConfig {
     @Bean
     ConsultarServicoUseCase consultarServicoUseCase(ServicoGateway servicoGateway) {
         return new ConsultarServicoUseCase(servicoGateway);
-    }
-    @Bean
-    ConsultarTempoMedioUseCase consultarTempoMedioUseCase(ServicoGateway servicoGateway, StatusServicoGateway statusServicoGateway) {
-        return new ConsultarTempoMedioUseCase(servicoGateway, statusServicoGateway);
     }
     @Bean
     ListarServicosUseCase listarServicosUseCase(ServicoGateway servicoGateway) {
@@ -173,28 +161,8 @@ public class ApplicationConfig {
         return new IniciarDiagnosticoOrdemServicoUseCase(ordemServicoGateway, notificadorClienteGateway);
     }
     @Bean
-    IniciarExecucaoUseCase iniciarExecucaoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway, StatusServicoGateway statusServicoGateway, RegistroEventosOrdemServico registroEventos, Clock clock) {
-        return new IniciarExecucaoUseCase(ordemServicoGateway, notificadorClienteGateway, statusServicoGateway, registroEventos, clock);
-    }
-    @Bean
-    FinalizarOrdemServicoUseCase finalizarOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, StatusServicoGateway statusServicoGateway, NotificadorClienteGateway notificadorClienteGateway, RegistroEventosOrdemServico registroEventos) {
-        return new FinalizarOrdemServicoUseCase(ordemServicoGateway, statusServicoGateway, notificadorClienteGateway, registroEventos);
-    }
-    @Bean
     EntregarOrdemServicoUseCase entregarOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway) {
         return new EntregarOrdemServicoUseCase(ordemServicoGateway, notificadorClienteGateway);
-    }
-    @Bean
-    ListarServicosPorOSUseCase listarServicosPorOSUseCase(StatusServicoGateway statusServicoGateway) {
-        return new ListarServicosPorOSUseCase(statusServicoGateway);
-    }
-    @Bean
-    IniciarServicoUseCase iniciarServicoUseCase(StatusServicoGateway statusServicoGateway) {
-        return new IniciarServicoUseCase(statusServicoGateway);
-    }
-    @Bean
-    FinalizarServicoUseCase finalizarServicoUseCase(StatusServicoGateway statusServicoGateway) {
-        return new FinalizarServicoUseCase(statusServicoGateway);
     }
 
     /* Saga (ADR 005) */
@@ -205,10 +173,6 @@ public class ApplicationConfig {
     @Bean
     ConcluirDiagnosticoUseCase concluirDiagnosticoUseCase(OrdemServicoGateway ordemServicoGateway, ServicoGateway servicoGateway, RegistroEventosOrdemServico registroEventos) {
         return new ConcluirDiagnosticoUseCase(ordemServicoGateway, servicoGateway, registroEventos);
-    }
-    @Bean
-    FalharExecucaoUseCase falharExecucaoUseCase(OrdemServicoGateway ordemServicoGateway, NotificadorClienteGateway notificadorClienteGateway, RegistroEventosOrdemServico registroEventos) {
-        return new FalharExecucaoUseCase(ordemServicoGateway, notificadorClienteGateway, registroEventos);
     }
     @Bean
     ListarHistoricoOrdemServicoUseCase listarHistoricoOrdemServicoUseCase(OrdemServicoGateway ordemServicoGateway, HistoricoOrdemServicoGateway historicoGateway) {

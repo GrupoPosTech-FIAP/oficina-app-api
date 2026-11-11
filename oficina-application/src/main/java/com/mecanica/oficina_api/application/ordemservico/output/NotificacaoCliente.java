@@ -37,7 +37,7 @@ public record NotificacaoCliente(
 
     public static NotificacaoCliente emExecucao(OrdemServico os) {
         return new NotificacaoCliente(
-                TipoNotificacaoCliente.ENVIO_ORCAMENTO,
+                TipoNotificacaoCliente.EM_EXECUCAO,
                 os.getId(),
                 os.getClienteId(),
                 os.getVeiculoId());
@@ -53,7 +53,7 @@ public record NotificacaoCliente(
 
     public static NotificacaoCliente entrega(OrdemServico os) {
         return new NotificacaoCliente(
-                TipoNotificacaoCliente.ENVIO_ORCAMENTO,
+                TipoNotificacaoCliente.ENTREGUE,
                 os.getId(),
                 os.getClienteId(),
                 os.getVeiculoId());

@@ -89,6 +89,21 @@ class ProcessarEventoSagaUseCaseTest {
         assertThat(captor.getValue().tipo()).isEqualTo(TipoNotificacaoCliente.CANCELADA);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "ExecucaoIniciada, AGUARDANDO_EXECUCAO, EM_EXECUCAO",
+            "ExecucaoConcluida, EM_EXECUCAO, FINALIZACAO_OS"
+    })
+    void inicioEFimDaExecucaoNotificamOCliente(String evento, OrdemServicoStatus de, TipoNotificacaoCliente tipo) {
+        osEm(de);
+
+        useCase.executar(evento, OS_ID, null);
+
+        ArgumentCaptor<NotificacaoCliente> captor = ArgumentCaptor.forClass(NotificacaoCliente.class);
+        verify(notificador).notificar(captor.capture());
+        assertThat(captor.getValue().tipo()).isEqualTo(tipo);
+    }
+
     @Test
     void eventoForaDeOrdemSoEntraNoHistorico() {
         osEm(OrdemServicoStatus.EM_DIAGNOSTICO);

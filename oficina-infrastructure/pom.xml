@@ -24,6 +24,17 @@
             <artifactId>oficina-adapters</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- já chegam pelo oficina-adapters; declarados para entrarem no relatório agregado do JaCoCo -->
+        <dependency>
+            <groupId>com.mecanica</groupId>
+            <artifactId>oficina-application</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mecanica</groupId>
+            <artifactId>oficina-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Actuator fica na borda externa -->
         <dependency>
@@ -121,6 +132,15 @@
                     </excludes>
                 </configuration>
                 <executions>
+                    <!-- cobertura dos quatro módulos juntos (os testes daqui também exercitam os outros) -->
+                    <execution>
+                        <id>report-aggregate</id>
+                        <phase>verify</phase>
+                        <goals><goal>report-aggregate</goal></goals>
+                        <configuration>
+                            <includeCurrentProject>true</includeCurrentProject>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>check</id>
                         <phase>verify</phase>

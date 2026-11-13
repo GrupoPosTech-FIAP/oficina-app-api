@@ -195,3 +195,53 @@ Para atender ao requisito de **Alertas para falhas no processamento de ordens de
    - `log.level`
 4. **Visualização no New Relic:**
    - Ao inspecionar uma transação com erro em **APM $\rightarrow$ Distributed Tracing**, basta clicar em **Logs in context** para ver todos os logs exatos gerados por aquela requisição sem misturar com logs de outras chamadas concorrentes.
+
+---
+
+## 🔗 6. Observabilidade dos microsserviços da Saga
+
+Os serviços da Saga (ADR 005) usam a mesma instrumentação: o agente do OpenTelemetry na imagem e exportação OTLP para o
+New Relic, cada um com o seu `service.name` e todos com `service.namespace=oficina`.
+
+| Serviço | `service.name` |
+|---|---|
+| OS (este repositório) | `oficina-api` |
+| Billing | `oficina-billing-service` |
+| Inventory | `oficina-inventory-service` |
+| Execution | `oficina-execution-service` |
+
+### Configuração na AWS
+- O `k8s/base/configmap.yaml` de cada serviço traz as variáveis `OTEL_*` (nome, exporters, protocolo e endpoint).
+- O `deploy.yml` gera no Secret o cabeçalho `OTEL_EXPORTER_OTLP_HEADERS` a partir do secret **`NEW_RELIC_LICENSE_KEY`** da
+  organização. Sem esse secret, `OTEL_SDK_DISABLED=true` desliga o agente em vez de tentar exportar sem chave.
+- No `docker-compose` dos serviços novos o agente vem desligado; para ligar, defina no `.env`
+  `NEW_RELIC_LICENSE_KEY=<chave>` e `OTEL_SDK_DISABLED=false`.
+
+### O que o agente captura
+Requisições HTTP, chamadas JDBC (PostgreSQL), DynamoDB, SNS e SQS, tarefas agendadas (relay do outbox) e os logs da
+aplicação, com `trace.id` e `span.id`.
+
+### Acompanhando uma OS pela Saga
+Cada passo da Saga gera um log com `saga_id` (o ID da OS) e `event_type`, em todos os serviços
+(`SAGA_EVENTO_PUBLICADO`, `SAGA_EVENTO_CONSUMIDO`, `SAGA_EVENTO_FALHA_*`). A linha do tempo de uma OS entre os serviços:
+
+```sql
+SELECT timestamp, service.name, message FROM Log
+WHERE service.namespace = 'oficina' AND message LIKE '%saga_id=<id da OS>%'
+SINCE 1 day ago ORDER BY timestamp ASC
+```
+
+Volume de eventos e falhas por serviço:
+
+```sql
+SELECT count(*) FROM Log
+WHERE service.namespace = 'oficina' AND message LIKE '[SAGA_EVENTO_%'
+FACET service.name, capture(message, r'\[(?P<passo>SAGA_EVENTO_[A-Z_]+)\]') SINCE 1 day ago TIMESERIES
+```
+
+Para alerta, uma condição NRQL sobre `message LIKE '[SAGA_EVENTO_FALHA_%'` com limite acima de 0 em 5 minutos avisa
+quando um serviço não consegue consumir ou publicar eventos.
+
+> O relay do outbox consulta o banco a cada segundo e o consumidor faz long polling no SQS. Isso gera spans contínuos;
+> se o volume pesar no plano gratuito do New Relic, dá para amostrar os traces com `OTEL_TRACES_SAMPLER=parentbased_traceidratio`
+> e `OTEL_TRACES_SAMPLER_ARG=0.2`.

@@ -31,4 +31,5 @@
 - [testes-e-qualidade.md](testes-e-qualidade.md) — testes, BDD, Bruno, JaCoCo e SonarCloud.
 
 ## Entrega
+- [status-fase-4.md](status-fase-4.md) — **comece por aqui para continuar o trabalho:** o que está pronto, decisões fechadas e o que falta para entregar.
 - [entrega.md](entrega.md) — conteúdo do PDF da Fase 4: participantes, repositórios, vídeo, arquitetura, Saga e justificativas.

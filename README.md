@@ -75,6 +75,7 @@ Para Minikube e AWS, ver os guias de execução em [docs/](docs/README.md).
 
 | Documento | Assunto |
 |---|---|
+| [docs/status-fase-4.md](docs/status-fase-4.md) | **Estado da Fase 4 e o que falta para entregar** (comece por aqui) |
 | [docs/arquitetura.md](docs/arquitetura.md) | Clean Architecture, módulos, fluxo de dados, stack, PostgreSQL |
 | [docs/saga.md](docs/saga.md) | Saga da OS: máquina de estados, compensações, histórico |
 | [docs/execucao-local.md](docs/execucao-local.md) | Rodar localmente (Docker Compose / Minikube) |

@@ -57,7 +57,8 @@ public class SagaOrdemServicoSteps {
     private static final JsonMapper ENVELOPE_JSON = JsonMapper.builder().build();
     private static final Map<String, String> PRODUTORES = Map.of(
             "billing", "oficina-billing-service",
-            "inventory", "oficina-inventory-service");
+            "inventory", "oficina-inventory-service",
+            "execution", "oficina-execution-service");
 
     @Autowired private WebApplicationContext context;
     @Autowired private ProcessadorEventos processador;
@@ -74,7 +75,6 @@ public class SagaOrdemServicoSteps {
     private String token;
     private String osId;
     private String servicoId;
-    private MvcResult ultimaResposta;
     private List<ProcessadorEventos.Resultado> entregas;
 
     @Before
@@ -182,34 +182,10 @@ public class SagaOrdemServicoSteps {
                 entregar(PRODUTORES.get(servico), evento, eventId));
     }
 
-    @Quando("o mecânico inicia a execução")
-    public void oMecanicoIniciaAExecucao() throws Exception {
-        ultimaResposta = executar(patch("/ordem-servico/" + osId + "/iniciar-execucao")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"servicoIds\":[\"" + servicoId + "\"]}"));
-    }
-
-    @E("conclui todos os serviços da ordem")
-    public void concluiTodosOsServicos() throws Exception {
-        String json = executar(get("/ordem-servico/" + osId + "/servico/listar")).getResponse().getContentAsString();
-        List<Map<String, Object>> servicos = objectMapper.readValue(json, new TypeReference<>() {});
-        assertThat(servicos).isNotEmpty();
-        for (Map<String, Object> servico : servicos) {
-            exigirOk(executar(patch("/ordem-servico/servico/" + servico.get("id") + "/iniciar")));
-            exigirOk(executar(patch("/ordem-servico/servico/" + servico.get("id") + "/finalizar")));
-        }
-    }
-
-    @E("finaliza a ordem de serviço")
-    public void finalizaAOrdemDeServico() throws Exception {
-        exigirOk(executar(patch("/ordem-servico/" + osId + "/finalizar")));
-    }
-
     @E("a execução falha com o motivo {string}")
-    public void aExecucaoFalha(String motivo) throws Exception {
-        exigirOk(executar(patch("/ordem-servico/" + osId + "/falhar-execucao")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("motivo", motivo)))));
+    public void aExecucaoFalha(String motivo) {
+        entregar(PRODUTORES.get("execution"), "ExecucaoFalhou", UUID.randomUUID().toString(),
+                "{\"ordemServicoId\":\"" + osId + "\",\"motivo\":\"" + motivo + "\"}");
     }
 
     // ---------- Então ----------
@@ -227,9 +203,10 @@ public class SagaOrdemServicoSteps {
         assertThat(payload.get("insumos").toString()).contains("Óleo 5W30", "45");
     }
 
-    @E("o evento {string} é publicado com o motivo {string}")
-    public void oEventoEPublicadoComOMotivo(String evento, String motivo) throws Exception {
-        assertThat(payloadPublicado(evento).get("motivo")).isEqualTo(motivo);
+    @E("o histórico guarda o motivo {string} em {string}")
+    public void oHistoricoGuardaOMotivo(String motivo, String evento) throws Exception {
+        assertThat(historico()).filteredOn(h -> evento.equals(h.get("evento"))).singleElement()
+                .satisfies(h -> assertThat(String.valueOf(h.get("detalhe"))).contains(motivo));
     }
 
     @E("os eventos publicados são {string}")
@@ -254,20 +231,13 @@ public class SagaOrdemServicoSteps {
 
     @E("o histórico marca {string} como descartado")
     public void oHistoricoMarcaComoDescartado(String evento) throws Exception {
-        assertThat(historico()).singleElement().satisfies(h -> {
-            assertThat(h).containsEntry("evento", evento);
-            assertThat(h).containsEntry("descartado", true);
-        });
+        assertThat(historico()).filteredOn(h -> evento.equals(h.get("evento"))).singleElement()
+                .satisfies(h -> assertThat(h).containsEntry("descartado", true));
     }
 
     @E("o histórico tem {int} registro de {string}")
     public void oHistoricoTemRegistros(int quantidade, String evento) throws Exception {
         assertThat(historico()).filteredOn(h -> evento.equals(h.get("evento"))).hasSize(quantidade);
-    }
-
-    @Então("a operação é recusada com conflito")
-    public void aOperacaoERecusadaComConflito() {
-        assertThat(ultimaResposta.getResponse().getStatus()).isEqualTo(409);
     }
 
     @Então("a segunda entrega é ignorada como duplicada")
@@ -290,12 +260,18 @@ public class SagaOrdemServicoSteps {
         String payload = "CobrancaCriada".equals(evento)
                 ? "{\"ordemServicoId\":\"" + osId + "\",\"checkoutUrl\":\"https://mp/checkout\"}"
                 : "{\"ordemServicoId\":\"" + osId + "\"}";
+        return entregar(produtor, evento, eventId, payload);
+    }
+
+    private ProcessadorEventos.Resultado entregar(String produtor, String evento, String eventId, String payload) {
         return processador.processar(new EventoEnvelope(eventId, evento, 1, Instant.now(), produtor, osId,
                 ENVELOPE_JSON.readTree(payload)));
     }
 
     private static String produtorDe(String evento) {
-        return evento.startsWith("Estoque") ? PRODUTORES.get("inventory") : PRODUTORES.get("billing");
+        if (evento.startsWith("Estoque")) return PRODUTORES.get("inventory");
+        if (evento.startsWith("Execucao")) return PRODUTORES.get("execution");
+        return PRODUTORES.get("billing");
     }
 
     private MvcResult executar(MockHttpServletRequestBuilder req) throws Exception {

@@ -7,14 +7,16 @@ vista do serviço de OS, que é o dono do status e do histórico. A infraestrutu
 ## Decisões desta implementação
 
 - **Orçamento negado cancela a OS** (`CANCELADA`), em vez de voltar para diagnóstico.
-- **A execução continua neste serviço.** Enquanto o `oficina-execution-service` não existe,
-  iniciar, finalizar e registrar falha são endpoints REST daqui, e `ExecucaoIniciada`,
-  `ExecucaoConcluida` e `ExecucaoFalhou` saem do tópico `oficina-os-events`. As assinaturas do
-  tópico `execution` ficam prontas no Terraform para quando o serviço for criado.
+- **A execução é do [`oficina-execution-service`](https://github.com/GrupoPosTech-FIAP/oficina-execution-service).**
+  Fila de execução, tarefas por serviço, andamentos e tempo médio ficam lá (DynamoDB). A OS só
+  muda de status pelos eventos `ExecucaoIniciada`, `ExecucaoConcluida` e `ExecucaoFalhou` do
+  tópico `oficina-execution-events`; os endpoints `iniciar-execucao`, `finalizar`,
+  `falhar-execucao`, `servico/{id}/iniciar|finalizar`, `{id}/servico/listar` e
+  `GET /servico/{id}/tempo-medio` saíram daqui.
 - **Preço dos itens no diagnóstico.** Serviços são precificados pelo catálogo da OS; o preço
   dos insumos vem no corpo do `concluir-diagnostico` (o catálogo de insumos é do inventory).
-- **Não há mais atalho para execução:** `iniciar-execucao` exige `AGUARDANDO_EXECUCAO`, ou seja,
-  pagamento confirmado.
+- **Não há atalho para execução:** `ExecucaoIniciada` só é aceito em `AGUARDANDO_EXECUCAO`, ou
+  seja, com o pagamento confirmado; fora disso é registrado como descartado.
 
 ## Máquina de estados
 
@@ -28,9 +30,9 @@ stateDiagram-v2
     AGUARDANDO_APROVACAO --> CANCELADA: OrcamentoNegado / OrcamentoExpirado / EstoqueInsuficiente
     AGUARDANDO_PAGAMENTO --> AGUARDANDO_EXECUCAO: PagamentoConfirmado
     AGUARDANDO_PAGAMENTO --> CANCELADA: PagamentoRecusado / PagamentoExpirado
-    AGUARDANDO_EXECUCAO --> EM_EXECUCAO: PATCH iniciar-execucao (publica ExecucaoIniciada)
-    EM_EXECUCAO --> FINALIZADA: PATCH finalizar (publica ExecucaoConcluida)
-    EM_EXECUCAO --> CANCELADA: PATCH falhar-execucao (publica ExecucaoFalhou)
+    AGUARDANDO_EXECUCAO --> EM_EXECUCAO: ExecucaoIniciada
+    EM_EXECUCAO --> FINALIZADA: ExecucaoConcluida
+    EM_EXECUCAO --> CANCELADA: ExecucaoFalhou
     FINALIZADA --> ENTREGUE: PATCH entregar
 ```
 
@@ -49,7 +51,8 @@ do status atual (fora de ordem ou repetido) é registrado com `descartado = true
 | Baixa de estoque | inventory | `OrcamentoAprovado` → `EstoqueBaixado` ou `EstoqueInsuficiente` (tudo ou nada) |
 | Cobrança | billing | `EstoqueBaixado` → preferência no Checkout Pro → `CobrancaCriada` (com `checkoutUrl`) |
 | Pagamento | billing | webhook do Mercado Pago → `PagamentoConfirmado` ou `PagamentoRecusado` |
-| Execução | os | `iniciar-execucao` → `ExecucaoIniciada`; `finalizar` → `ExecucaoConcluida` |
+| Fila de execução | execution | `DiagnosticoConcluido` → tarefas planejadas; `PagamentoConfirmado` → entra na fila |
+| Execução | execution | `PATCH /execucoes/{id}/iniciar` → `ExecucaoIniciada`; `concluir` → `ExecucaoConcluida`; `falhar` → `ExecucaoFalhou` |
 | Timeouts | billing | agendador → `OrcamentoExpirado`, `PagamentoExpirado` |
 
 ## Compensações

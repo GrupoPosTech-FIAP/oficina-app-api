@@ -26,7 +26,7 @@ Na Fase 4 a aplicação foi dividida em microsserviços, cada um com banco próp
 | `oficina-app-api` (OS Service) | Dono do ciclo de vida e do histórico da OS | `oficina_db` |
 | `oficina-billing-service` | Orçamento, aprovação, cobrança (Mercado Pago) e estorno | `billing_db` |
 | `oficina-inventory-service` | Baixa e estorno de insumos | `inventory_db` |
-| `oficina-execution-service` *(a criar)* | Fila de execução, diagnóstico/reparo, conclusão | próprio |
+| `oficina-execution-service` | Fila de execução, diagnóstico/reparo, conclusão | DynamoDB (`oficina-execucoes`) |
 
 O requisito do Tech Challenge proíbe acesso direto ao banco de outro serviço e exige
 rollback seguro caso qualquer etapa falhe. Uma única transação ACID não é mais possível,
@@ -261,18 +261,22 @@ mensageria entrou em `oficina-app-api#40`, `oficina-billing-service#1`,
   de orçamento para a mesma OS. Se o cliente quiser renegociar, abre-se uma OS nova. No billing
   o `GerarOrcamentoUseCase` continua aceitando um novo orçamento depois de `NEGADO` ou
   `EXPIRADO`, para manter essa porta aberta.
-- **A execução fica no os-service por enquanto.** Os endpoints REST de execução publicam
-  `ExecucaoIniciada`, `ExecucaoConcluida` e `ExecucaoFalhou` no tópico `oficina-os-events`
-  (`PATCH /ordem-servico/{id}/falhar-execucao` foi criado para a falha). Billing e inventory
-  assinam `ExecucaoFalhou` tanto no tópico da OS quanto no `oficina-execution-events`, que
-  já existe vazio. Quando o `oficina-execution-service` for criado, basta ele publicar no
-  próprio tópico e a OS deixar de publicar esses eventos; os consumidores não mudam. Os
-  manipuladores da OS para os três eventos já estão prontos para esse dia.
+- **Execução no `oficina-execution-service`, com DynamoDB.** O serviço consome
+  `DiagnosticoConcluido` (os serviços do diagnóstico viram as tarefas da execução) e
+  `PagamentoConfirmado` (a OS entra na fila), e publica `ExecucaoIniciada`, `ExecucaoConcluida` e
+  `ExecucaoFalhou` no tópico `oficina-execution-events`. Na OS saíram os endpoints de execução e o
+  acompanhamento por serviço (`StatusServico`); o tempo médio por serviço passou para
+  `GET /execucoes/servicos/{servicoId}/tempo-medio`. O DynamoDB é o banco NoSQL exigido pelo Tech
+  Challenge: a outbox fica numa segunda tabela, gravada na mesma `TransactWriteItems` da execução,
+  e a concorrência é controlada por versão (gravação condicional). Os dois eventos consumidos
+  só criam ou avançam a execução, então a idempotência vem do próprio estado, sem tabela
+  `eventos_processados`.
 - **Preços no `DiagnosticoConcluido`.** O evento leva `servicos[{servicoId, descricao,
   quantidade, precoUnitario}]` com preço do catálogo da própria OS e `insumos[{insumoId,
   descricao, quantidade, precoUnitario}]` com o preço informado no diagnóstico. O billing gera
   o orçamento só com o evento, sem chamar o `CatalogoGateway` por REST no meio da Saga.
-- **`iniciar-execucao` exige `AGUARDANDO_EXECUCAO`**, ou seja, pagamento confirmado. O atalho
+- **A execução só começa com pagamento confirmado.** O execution service só coloca na fila depois
+  do `PagamentoConfirmado`, e a OS só aceita `ExecucaoIniciada` em `AGUARDANDO_EXECUCAO`. O atalho
   anterior a partir de `EM_DIAGNOSTICO`/`AGUARDANDO_APROVACAO` foi removido.
 - **Terraform e ordem de deploy.** Tópicos, filas, DLQs, assinaturas e alarmes ficam em
   `oficina-infra-cluster/messaging.tf`, e não num módulo separado. Os workflows de deploy dos

@@ -7,27 +7,19 @@ import com.mecanica.oficina_api.adapters.common.ValidationErrorResponse;
 import com.mecanica.oficina_api.adapters.web.GlobalExceptionHandler;
 import com.mecanica.oficina_api.adapters.web.OrdemServicoController;
 import com.mecanica.oficina_api.adapters.web.dto.request.CriarOrdemServicoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.IniciarExecucaoRequest;
 import com.mecanica.oficina_api.adapters.web.presenter.OrdemServicoPresenter;
 import com.mecanica.oficina_api.application.ordemservico.input.ConcluirDiagnosticoInput;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConcluirDiagnosticoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ConsultarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FalharExecucaoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarHistoricoOrdemServicoUseCase;
 import com.mecanica.oficina_api.domain.ordemservico.HistoricoOrdemServico;
 import com.mecanica.oficina_api.application.ordemservico.usecase.CriarOrdemServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.EntregarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.FinalizarServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarDiagnosticoOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarExecucaoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.IniciarServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarOrdensServicoUseCase;
 import com.mecanica.oficina_api.application.ordemservico.usecase.ListarPorVeiculoOrdemServicoUseCase;
-import com.mecanica.oficina_api.application.ordemservico.usecase.ListarServicosPorOSUseCase;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServicoStatus;
-import com.mecanica.oficina_api.domain.ordemservico.StatusServico;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -68,14 +60,8 @@ class OrdemServicoControllerTest {
     @Mock private ListarOrdensServicoUseCase listarOrdensServicoUseCase;
     @Mock private ListarPorVeiculoOrdemServicoUseCase listarPorVeiculoOrdemServicoUseCase;
     @Mock private IniciarDiagnosticoOrdemServicoUseCase iniciarDiagnosticoOrdemServicoUseCase;
-    @Mock private IniciarExecucaoUseCase iniciarExecucaoUseCase;
-    @Mock private FinalizarOrdemServicoUseCase finalizarOrdemServicoUseCase;
     @Mock private EntregarOrdemServicoUseCase entregarOrdemServicoUseCase;
-    @Mock private ListarServicosPorOSUseCase listarServicosPorOSUseCase;
-    @Mock private IniciarServicoUseCase iniciarServicoUseCase;
-    @Mock private FinalizarServicoUseCase finalizarServicoUseCase;
     @Mock private ConcluirDiagnosticoUseCase concluirDiagnosticoUseCase;
-    @Mock private FalharExecucaoUseCase falharExecucaoUseCase;
     @Mock private ListarHistoricoOrdemServicoUseCase listarHistoricoOrdemServicoUseCase;
 
     private static final String OS_ID = "os-1";
@@ -87,9 +73,7 @@ class OrdemServicoControllerTest {
         OrdemServicoController controller = new OrdemServicoController(
                 criarOrdemServicoUseCase, consultarOrdemServicoUseCase, listarOrdensServicoUseCase,
                 listarPorVeiculoOrdemServicoUseCase, iniciarDiagnosticoOrdemServicoUseCase,
-                iniciarExecucaoUseCase, finalizarOrdemServicoUseCase, entregarOrdemServicoUseCase,
-                listarServicosPorOSUseCase, iniciarServicoUseCase, finalizarServicoUseCase,
-                concluirDiagnosticoUseCase, falharExecucaoUseCase, listarHistoricoOrdemServicoUseCase,
+                entregarOrdemServicoUseCase, concluirDiagnosticoUseCase, listarHistoricoOrdemServicoUseCase,
                 new OrdemServicoPresenter());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -101,12 +85,6 @@ class OrdemServicoControllerTest {
     private OrdemServico osRecebida() {
         return OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
                 OrdemServicoStatus.RECEBIDA, null, null);
-    }
-
-    private StatusServico statusServico() {
-        return StatusServico.recriar("status-1",
-                com.mecanica.oficina_api.domain.ordemservico.ServicoStatus.AGUARDANDO,
-                OS_ID, "servico-1", null, null);
     }
 
     private CriarOrdemServicoRequest criarRequest() {
@@ -253,26 +231,6 @@ class OrdemServicoControllerTest {
     }
 
     @Test
-    void deveRegistrarFalhaNaExecucaoERetornar200() throws Exception {
-        when(falharExecucaoUseCase.executar(OS_ID, "peça indisponível"))
-                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID, OrdemServicoStatus.CANCELADA, null, null));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/falhar-execucao")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"motivo\":\"peça indisponível\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CANCELADA"));
-    }
-
-    @Test
-    void deveRetornar400AoFalharExecucaoSemMotivo() throws Exception {
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/falhar-execucao")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"motivo\":\" \"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void deveListarHistoricoDaOs() throws Exception {
         when(listarHistoricoOrdemServicoUseCase.executar(OS_ID)).thenReturn(List.of(
                 new HistoricoOrdemServico(OS_ID, "OrcamentoGerado", HistoricoOrdemServico.Origem.RECEBIDO,
@@ -292,43 +250,6 @@ class OrdemServicoControllerTest {
     }
 
     @Test
-    void deveIniciarExecucaoSemBodyERetornar200() throws Exception {
-        when(iniciarExecucaoUseCase.executar(OS_ID, List.of()))
-                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.EM_EXECUCAO, null, null));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-execucao"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
-    }
-
-    @Test
-    void deveIniciarExecucaoComServicosERetornar200() throws Exception {
-        IniciarExecucaoRequest req = new IniciarExecucaoRequest(List.of("servico-1", "servico-2"));
-        when(iniciarExecucaoUseCase.executar(OS_ID, List.of("servico-1", "servico-2")))
-                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.EM_EXECUCAO, null, null));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/iniciar-execucao")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
-    }
-
-    @Test
-    void deveFinalizarERetornar200() throws Exception {
-        when(finalizarOrdemServicoUseCase.executar(OS_ID))
-                .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
-                        OrdemServicoStatus.FINALIZADA, new BigDecimal("100.00"), null));
-
-        mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/finalizar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("FINALIZADA"))
-                .andExpect(jsonPath("$.valorFinal").value(100.00));
-    }
-
-    @Test
     void deveEntregarERetornar200() throws Exception {
         when(entregarOrdemServicoUseCase.executar(OS_ID))
                 .thenReturn(OrdemServico.reconstituir(OS_ID, VEICULO_ID, CLIENTE_ID,
@@ -337,53 +258,6 @@ class OrdemServicoControllerTest {
         mockMvc.perform(patch("/ordem-servico/" + OS_ID + "/entregar"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ENTREGUE"));
-    }
-
-    // --- serviços ---
-
-    @Test
-    void deveListarServicosERetornar200() throws Exception {
-        when(listarServicosPorOSUseCase.executar(OS_ID)).thenReturn(List.of(statusServico()));
-
-        mockMvc.perform(get("/ordem-servico/" + OS_ID + "/servico/listar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value("status-1"))
-                .andExpect(jsonPath("$[0].status").value("AGUARDANDO"))
-                .andExpect(jsonPath("$[0].servicoId").value("servico-1"));
-    }
-
-    @Test
-    void deveIniciarServicoERetornar200() throws Exception {
-        StatusServico iniciado = StatusServico.recriar("status-1",
-                com.mecanica.oficina_api.domain.ordemservico.ServicoStatus.INICIADO,
-                OS_ID, "servico-1", null, null);
-        when(iniciarServicoUseCase.executar("status-1")).thenReturn(iniciado);
-
-        mockMvc.perform(patch("/ordem-servico/servico/status-1/iniciar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INICIADO"));
-    }
-
-    @Test
-    void deveRetornar404AoIniciarServico_quandoNaoEncontrado() throws Exception {
-        when(iniciarServicoUseCase.executar("inexistente"))
-                .thenThrow(new IllegalArgumentException("Serviço não encontrado"));
-
-        mockMvc.perform(patch("/ordem-servico/servico/inexistente/iniciar"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void deveFinalizarServicoERetornar200() throws Exception {
-        StatusServico finalizado = StatusServico.recriar("status-1",
-                com.mecanica.oficina_api.domain.ordemservico.ServicoStatus.FINALIZADO,
-                OS_ID, "servico-1", null, null);
-        when(finalizarServicoUseCase.executar("status-1")).thenReturn(finalizado);
-
-        mockMvc.perform(patch("/ordem-servico/servico/status-1/finalizar"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("FINALIZADO"));
     }
 
     @ParameterizedTest

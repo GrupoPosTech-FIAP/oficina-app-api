@@ -140,8 +140,7 @@ SELECT average(duration) AS 'Tempo Médio (s)', count(*) AS 'Qtd Chamadas'
 FROM Transaction 
 WHERE request.uri IN (
   '/ordem-servico/{id}/iniciar-diagnostico',
-  '/ordem-servico/{id}/iniciar-execucao',
-  '/ordem-servico/{id}/finalizar',
+  '/ordem-servico/{id}/concluir-diagnostico',
   '/ordem-servico/{id}/entregar'
 ) 
 FACET request.uri 

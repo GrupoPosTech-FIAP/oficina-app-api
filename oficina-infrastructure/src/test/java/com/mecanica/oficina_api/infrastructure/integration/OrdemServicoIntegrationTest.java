@@ -5,7 +5,6 @@ import com.mecanica.oficina_api.adapters.persistence.ClienteJpaEntity;
 import com.mecanica.oficina_api.adapters.persistence.ServicoJpaEntity;
 import com.mecanica.oficina_api.adapters.web.dto.request.CadastrarVeiculoRequest;
 import com.mecanica.oficina_api.adapters.web.dto.request.CriarOrdemServicoRequest;
-import com.mecanica.oficina_api.adapters.web.dto.request.IniciarExecucaoRequest;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
@@ -94,30 +93,13 @@ class OrdemServicoIntegrationTest extends BaseIntegrationTest {
         // orçamento e pagamento acontecem no billing; aqui chegam como eventos da Saga
         SagaIntegrationSupport.liberarParaExecucao(mockMvc, this::comToken, processadorEventos, osId, servicoId);
 
-        IniciarExecucaoRequest iniciarReq = new IniciarExecucaoRequest(List.of(servicoId));
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/iniciar-execucao")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(toJson(iniciarReq))))
-            .andExpect(status().isOk())
+        // execução e tarefas ficam no oficina-execution-service; a OS acompanha pelos eventos
+        SagaIntegrationSupport.receberDaExecucao(processadorEventos, "ExecucaoIniciada", osId, "");
+        mockMvc.perform(comToken(get("/ordem-servico/" + osId)))
             .andExpect(jsonPath("$.status").value("EM_EXECUCAO"));
 
-        String servicosJson = mockMvc.perform(comToken(get("/ordem-servico/" + osId + "/servico/listar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(1))
-            .andReturn().getResponse().getContentAsString();
-        List<Map<String, Object>> servicos = objectMapper.readValue(servicosJson, new TypeReference<>() {});
-        String statusServicoId = (String) servicos.get(0).get("id");
-
-        mockMvc.perform(comToken(patch("/ordem-servico/servico/" + statusServicoId + "/iniciar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("INICIADO"));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/servico/" + statusServicoId + "/finalizar")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("FINALIZADO"));
-
-        mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/finalizar")))
-            .andExpect(status().isOk())
+        SagaIntegrationSupport.receberDaExecucao(processadorEventos, "ExecucaoConcluida", osId, "");
+        mockMvc.perform(comToken(get("/ordem-servico/" + osId)))
             .andExpect(jsonPath("$.status").value("FINALIZADA"));
 
         mockMvc.perform(comToken(patch("/ordem-servico/" + osId + "/entregar")))

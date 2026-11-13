@@ -4,8 +4,8 @@ Funcionalidade: Saga da ordem de serviço
   Quero que a OS acompanhe o orçamento, o estoque e o pagamento tratados nos outros serviços
   Para só executar o serviço depois de aprovado, com as peças baixadas e pago
 
-  Os eventos de billing e inventory são entregues direto ao consumidor da fila, como chegariam
-  pelo SQS; os eventos que a OS publica são conferidos na outbox.
+  Os eventos de billing, inventory e execution são entregues direto ao consumidor da fila, como
+  chegariam pelo SQS; os eventos que a OS publica são conferidos na outbox.
 
   Contexto:
     Dado uma ordem de serviço em diagnóstico para o serviço "Troca de óleo" de R$ 80,00
@@ -21,11 +21,11 @@ Funcionalidade: Saga da ordem de serviço
     Então a ordem de serviço fica "AGUARDANDO_PAGAMENTO"
     Quando o billing publica "PagamentoConfirmado"
     Então a ordem de serviço fica "AGUARDANDO_EXECUCAO"
-    Quando o mecânico inicia a execução
-    E conclui todos os serviços da ordem
-    E finaliza a ordem de serviço
+    Quando o execution publica "ExecucaoIniciada"
+    Então a ordem de serviço fica "EM_EXECUCAO"
+    Quando o execution publica "ExecucaoConcluida"
     Então a ordem de serviço fica "FINALIZADA"
-    E os eventos publicados são "DiagnosticoConcluido, ExecucaoIniciada, ExecucaoConcluida"
+    E os eventos publicados são "DiagnosticoConcluido"
 
   Esquema do Cenário: <evento> cancela a OS antes da execução
     Dado que a saga já recebeu "<eventos anteriores>"
@@ -43,10 +43,10 @@ Funcionalidade: Saga da ordem de serviço
 
   Cenário: Falha na execução dispara os estornos de estoque e pagamento
     Dado que a saga já recebeu "OrcamentoGerado, OrcamentoAprovado, EstoqueBaixado, CobrancaCriada, PagamentoConfirmado"
-    Quando o mecânico inicia a execução
+    Quando o execution publica "ExecucaoIniciada"
     E a execução falha com o motivo "Bloco do motor trincado"
     Então a ordem de serviço fica "CANCELADA"
-    E o evento "ExecucaoFalhou" é publicado com o motivo "Bloco do motor trincado"
+    E o histórico guarda o motivo "Bloco do motor trincado" em "ExecucaoFalhou"
     Quando o inventory publica "EstoqueEstornado"
     E o billing publica "PagamentoEstornado"
     Então a ordem de serviço fica "CANCELADA"
@@ -54,9 +54,9 @@ Funcionalidade: Saga da ordem de serviço
 
   Cenário: A execução não começa sem pagamento confirmado
     Dado que a saga já recebeu "OrcamentoGerado"
-    Quando o mecânico inicia a execução
-    Então a operação é recusada com conflito
-    E a ordem de serviço fica "AGUARDANDO_APROVACAO"
+    Quando o execution publica "ExecucaoIniciada"
+    Então a ordem de serviço fica "AGUARDANDO_APROVACAO"
+    E o histórico marca "ExecucaoIniciada" como descartado
 
   Cenário: Evento fora de ordem é registrado e descartado
     Quando o billing publica "PagamentoConfirmado"

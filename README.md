@@ -28,7 +28,7 @@ Regras obrigatórias: nenhum módulo interno importa o externo; a camada `applic
 - **Clientes** — cadastro, consulta, alteração e exclusão
 - **Veículos** — cadastro e gestão, vinculados a clientes
 - **Usuários** — gestão de usuários e perfis de acesso
-- **Serviços** — catálogo de serviços com tempo médio de execução
+- **Serviços** — catálogo de serviços (o tempo médio de execução fica no `oficina-execution-service`)
 - **Insumos** — controle de estoque, compras e movimentação
 - **Ordens de Serviço** — ciclo de vida coordenado com billing e inventory por uma Saga:
 

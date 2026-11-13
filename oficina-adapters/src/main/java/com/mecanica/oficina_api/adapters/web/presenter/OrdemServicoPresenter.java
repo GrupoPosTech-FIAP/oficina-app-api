@@ -2,10 +2,8 @@ package com.mecanica.oficina_api.adapters.web.presenter;
 
 import com.mecanica.oficina_api.adapters.web.dto.response.OrdemServicoResponse;
 import com.mecanica.oficina_api.adapters.web.dto.response.HistoricoOrdemServicoResponse;
-import com.mecanica.oficina_api.adapters.web.dto.response.ServicoStatusResponse;
 import com.mecanica.oficina_api.domain.ordemservico.HistoricoOrdemServico;
 import com.mecanica.oficina_api.domain.ordemservico.OrdemServico;
-import com.mecanica.oficina_api.domain.ordemservico.StatusServico;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,20 +20,11 @@ public class OrdemServicoPresenter {
         return oss.stream().map(this::apresentar).toList();
     }
 
-    public ServicoStatusResponse apresentarServico(StatusServico s) {
-        return new ServicoStatusResponse(s.getId(), s.getStatus().name(), s.getOrdemServicoId(),
-                s.getServicoId(), s.getDataInicio(), s.getDataFim());
-    }
-
     public List<HistoricoOrdemServicoResponse> apresentarHistorico(List<HistoricoOrdemServico> historico) {
         return historico.stream()
                 .map(h -> new HistoricoOrdemServicoResponse(h.evento(), h.origem().name(),
                         h.statusAnterior() == null ? null : h.statusAnterior().name(), h.statusAtual().name(),
                         h.descartado(), h.detalhe(), h.ocorridoEm()))
                 .toList();
-    }
-
-    public List<ServicoStatusResponse> apresentarServicos(List<StatusServico> servicos) {
-        return servicos.stream().map(this::apresentarServico).toList();
     }
 }

@@ -36,7 +36,7 @@ public class ProcessarEventoSagaUseCase {
             Map.entry(EventosSaga.ESTOQUE_INSUFICIENTE, OrdemServico::cancelar),
             Map.entry(EventosSaga.PAGAMENTO_RECUSADO, OrdemServico::cancelar),
             Map.entry(EventosSaga.PAGAMENTO_EXPIRADO, OrdemServico::cancelar),
-            // vindos de um futuro oficina-execution-service; hoje a execução é feita aqui mesmo (REST)
+            // vindos do oficina-execution-service
             Map.entry(EventosSaga.EXECUCAO_INICIADA, OrdemServico::iniciarExecucao),
             Map.entry(EventosSaga.EXECUCAO_CONCLUIDA, OrdemServico::finalizar),
             Map.entry(EventosSaga.EXECUCAO_FALHOU, OrdemServico::falharExecucao));
@@ -90,14 +90,21 @@ public class ProcessarEventoSagaUseCase {
 
         if (resultado == Resultado.TRANSICAO_APLICADA) {
             os = ordemServicoGateway.atualizar(os);
-            if (os.getStatus() == OrdemServicoStatus.CANCELADA) {
-                notificadorClienteGateway.notificar(NotificacaoCliente.cancelada(os));
-            }
+            notificar(os);
         }
 
         historicoGateway.registrar(new HistoricoOrdemServico(ordemServicoId, evento, HistoricoOrdemServico.Origem.RECEBIDO,
                 anterior, os.getStatus(), resultado == Resultado.TRANSICAO_IGNORADA, detalhe, clock.instant()));
         return resultado;
+    }
+
+    private void notificar(OrdemServico os) {
+        switch (os.getStatus()) {
+            case EM_EXECUCAO -> notificadorClienteGateway.notificar(NotificacaoCliente.emExecucao(os));
+            case FINALIZADA -> notificadorClienteGateway.notificar(NotificacaoCliente.finalizacao(os));
+            case CANCELADA -> notificadorClienteGateway.notificar(NotificacaoCliente.cancelada(os));
+            default -> { }
+        }
     }
 
     private static Resultado aplicar(String evento, OrdemServico os) {

@@ -40,6 +40,12 @@ final class SagaIntegrationSupport {
                 .andExpect(jsonPath("$.status").value("EM_DIAGNOSTICO"));
     }
 
+    /** Evento do oficina-execution-service (a execução deixou de ser feita pela OS). */
+    static void receberDaExecucao(ProcessadorEventos processador, String eventType, String osId, String payloadExtra) {
+        receber(processador, eventType, osId, "oficina-execution-service",
+                "{\"ordemServicoId\":\"" + osId + "\"" + payloadExtra + "}");
+    }
+
     /** EM_DIAGNOSTICO → AGUARDANDO_EXECUCAO pelo caminho feliz da Saga. */
     static void liberarParaExecucao(MockMvc mockMvc, UnaryOperator<MockHttpServletRequestBuilder> comToken,
                                     ProcessadorEventos processador, String osId, String servicoId) throws Exception {

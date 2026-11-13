@@ -84,14 +84,8 @@ O JaCoCo roda em todos os módulos e o `oficina-infrastructure` junta tudo num r
 (`oficina-infrastructure/target/site/jacoco-aggregate/index.html`). O agregado é a medida que vale,
 porque os testes de integração e o BDD do `oficina-infrastructure` também exercitam domínio,
 aplicação e adapters. O CI reprova o build se a cobertura agregada de linhas ficar abaixo de
-**80%** e escreve o percentual no resumo da execução. Hoje: **94,5%**.
-
-| Módulo | Cobertura de linhas no agregado |
-|---|---|
-| `oficina-domain` | 92,2% |
-| `oficina-application` | 98,4% |
-| `oficina-adapters` | 93,3% |
-| `oficina-infrastructure` | 100% |
+**80%** e escreve o percentual no resumo da execução. Hoje: **95,0%** (1449 de 1526 linhas). A
+divisão por módulo está no relatório agregado.
 
 ![Relatório JaCoCo](assets/report_jacoco.png)
 

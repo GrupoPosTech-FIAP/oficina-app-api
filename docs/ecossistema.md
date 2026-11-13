@@ -1,28 +1,199 @@
 # 🏗️ Arquitetura do Ecossistema Oficina
 
-Visão completa da arquitetura que atravessa todos os repositórios do projeto Oficina.
-Para a arquitetura interna da aplicação (Clean Architecture, módulos Maven, data flow),
-consulte [arquitetura.md](arquitetura.md).
+Visão completa da arquitetura que atravessa todos os repositórios do projeto Oficina (Fase 4:
+microsserviços com Saga coreografada). Para a arquitetura interna do serviço de OS (Clean
+Architecture, módulos Maven, data flow), consulte [arquitetura.md](arquitetura.md).
 
 ---
 
 ## Repositórios e responsabilidades
 
-O sistema é composto por 4 repositórios com ciclos de vida independentes:
+Cada microsserviço tem repositório, pipeline, imagem e banco próprios. A infraestrutura
+compartilhada fica em repositórios de Terraform.
 
-| Repositório | Responsabilidade | Tecnologia |
-|---|---|---|
-| [`oficina-app-api`](https://github.com/GrupoPosTech-FIAP/oficina-app-api) | API REST da oficina mecânica, manifestos Kubernetes | Java 25, Spring Boot 4, K8s (Kustomize) |
-| [`oficina-infra-cluster`](https://github.com/GrupoPosTech-FIAP/oficina-infra-cluster) | Rede (VPC, Subnets), cluster EKS, ECR | Terraform, AWS |
-| [`oficina-infra-database`](https://github.com/GrupoPosTech-FIAP/oficina-infra-database) | Banco de dados RDS PostgreSQL, Security Group | Terraform, AWS RDS |
-| [`oficina-auth-gateway`](https://github.com/GrupoPosTech-FIAP/oficina-auth-gateway) | Gateway de autenticação por CPF (API Gateway + Lambda) | Node.js 20, TypeScript, Terraform |
+| Repositório | Responsabilidade | Banco | Tecnologia |
+|---|---|---|---|
+| [`oficina-app-api`](https://github.com/GrupoPosTech-FIAP/oficina-app-api) | **OS Service**: abertura e diagnóstico da OS, status e histórico da Saga, catálogo de serviços, veículos, notificações ao cliente | PostgreSQL (`oficina_db`) | Java 25, Spring Boot 4, Clean Architecture multi-módulo |
+| [`oficina-billing-service`](https://github.com/GrupoPosTech-FIAP/oficina-billing-service) | **Billing Service**: orçamento, aprovação, cobrança no Mercado Pago (Checkout Pro), webhook de pagamento, timeouts e reembolso | PostgreSQL (`billing_db`) | Java 25, Spring Boot 4, SDK Mercado Pago |
+| [`oficina-inventory-service`](https://github.com/GrupoPosTech-FIAP/oficina-inventory-service) | **Inventory Service**: catálogo de insumos, baixa de estoque por OS (tudo ou nada) e estorno | PostgreSQL (`inventory_db`) | Java 25, Spring Boot 4 |
+| [`oficina-execution-service`](https://github.com/GrupoPosTech-FIAP/oficina-execution-service) | **Execution Service**: fila de execução, tarefas por serviço, andamentos (diagnóstico, reparo, teste), conclusão ou falha e tempo médio | **DynamoDB** (NoSQL) | Java 25, Spring Boot 4, AWS SDK v2 |
+| [`oficina-customer-service`](https://github.com/GrupoPosTech-FIAP/oficina-customer-service) | **Customer Service**: cadastro de clientes (CPF/CNPJ, soft delete) | PostgreSQL (`customer_db`) | Java 25, Spring Boot 4 |
+| [`oficina-auth-gateway`](https://github.com/GrupoPosTech-FIAP/oficina-auth-gateway) | Porta de entrada: autenticação por CPF (Lambda), autorizador JWT e roteamento para os serviços | DynamoDB (rate limit) | Node.js 20, TypeScript, Terraform |
+| [`oficina-infra-cluster`](https://github.com/GrupoPosTech-FIAP/oficina-infra-cluster) | VPC, cluster EKS, repositórios ECR e a mensageria da Saga (tópicos SNS, filas SQS e DLQs) | — | Terraform |
+| [`oficina-infra-database`](https://github.com/GrupoPosTech-FIAP/oficina-infra-database) | Instância RDS PostgreSQL e as tabelas DynamoDB do execution | — | Terraform |
+
+**Banco por serviço:** os serviços relacionais usam bases lógicas separadas na mesma instância RDS
+(cada serviço cria e usa só a sua base), e o execution usa DynamoDB.
+Nenhum serviço lê o banco de outro: tudo que um serviço precisa de outro chega por evento.
 
 ---
 
-## Diagrama de Componentes (Visão de Nuvem)
+## Diagrama geral da arquitetura (Fase 4)
 
-O diagrama abaixo mostra todos os componentes provisionados na AWS e como eles se conectam.
-As cores indicam qual repositório é responsável por cada componente.
+Microsserviços, bancos e comunicação. As setas cheias são chamadas síncronas (REST); as
+tracejadas são eventos da Saga (SNS → SQS).
+
+```mermaid
+graph TB
+    CLIENTE((Cliente / Atendente / Mecânico))
+    MP["💳 Mercado Pago\n(Checkout Pro + webhook)"]
+
+    subgraph AWS["☁️ AWS us-east-1"]
+        APIGW["🔀 API Gateway + Lambdas\n(oficina-auth-gateway)\nPOST /auth · JWT authorizer"]
+
+        subgraph EKS["🖥️ Cluster EKS (pods com HPA)"]
+            OS["📋 OS Service\noficina-app-api"]
+            BILL["💰 Billing Service"]
+            INV["📦 Inventory Service"]
+            EXE["🔧 Execution Service"]
+            CUS["👤 Customer Service"]
+        end
+
+        subgraph DADOS["🗄️ Bancos (um por serviço)"]
+            RDS_OS[("PostgreSQL\noficina_db")]
+            RDS_BILL[("PostgreSQL\nbilling_db")]
+            RDS_INV[("PostgreSQL\ninventory_db")]
+            RDS_CUS[("PostgreSQL\ncustomer_db")]
+            DDB[("DynamoDB\noficina-execucoes\n+ outbox")]
+        end
+
+        subgraph MSG["📨 Mensageria da Saga"]
+            T_OS{{"SNS oficina-os-events"}}
+            T_BILL{{"SNS oficina-billing-events"}}
+            T_INV{{"SNS oficina-inventory-events"}}
+            T_EXE{{"SNS oficina-execution-events"}}
+            Q["SQS: uma fila + DLQ por serviço\n(filter policy por eventType)"]
+        end
+
+        NR["🔭 New Relic\n(OpenTelemetry OTLP)"]
+    end
+
+    CLIENTE -->|"REST + JWT"| APIGW
+    APIGW -->|"/app"| OS
+    APIGW -->|"/billing"| BILL
+    APIGW -->|"/inventory"| INV
+    BILL <-->|"preferência / reembolso"| MP
+    MP -->|"POST /webhooks/mercadopago"| APIGW
+
+    OS --- RDS_OS
+    BILL --- RDS_BILL
+    INV --- RDS_INV
+    CUS --- RDS_CUS
+    EXE --- DDB
+
+    OS -.->|DiagnosticoConcluido| T_OS
+    BILL -.->|"Orcamento*, Cobranca*, Pagamento*"| T_BILL
+    INV -.->|"EstoqueBaixado / Insuficiente / Estornado"| T_INV
+    EXE -.->|"ExecucaoIniciada / Concluida / Falhou"| T_EXE
+    T_OS & T_BILL & T_INV & T_EXE -.-> Q
+    Q -.-> OS & BILL & INV & EXE
+
+    EKS -.->|"traces, métricas, logs"| NR
+
+    style OS fill:#f72585,color:#fff
+    style BILL fill:#f72585,color:#fff
+    style INV fill:#f72585,color:#fff
+    style EXE fill:#f72585,color:#fff
+    style CUS fill:#f72585,color:#fff
+    style APIGW fill:#7209b7,color:#fff
+    style DDB fill:#3a0ca3,color:#fff
+    style RDS_OS fill:#3a0ca3,color:#fff
+    style RDS_BILL fill:#3a0ca3,color:#fff
+    style RDS_INV fill:#3a0ca3,color:#fff
+    style RDS_CUS fill:#3a0ca3,color:#fff
+```
+
+### Quem consome o quê
+
+Um tópico SNS por serviço produtor e uma fila SQS por serviço consumidor; cada fila assina só os
+eventos de que precisa (`messaging.tf` em `oficina-infra-cluster`).
+
+| Fila | Eventos consumidos |
+|---|---|
+| `oficina-os-queue` | todos os eventos de billing, inventory e execution (o OS Service é dono do status e do histórico) |
+| `oficina-billing-queue` | `DiagnosticoConcluido`, `EstoqueBaixado`, `ExecucaoFalhou` |
+| `oficina-inventory-queue` | `OrcamentoAprovado`, `PagamentoRecusado`, `PagamentoExpirado`, `ExecucaoFalhou` |
+| `oficina-execution-queue` | `DiagnosticoConcluido`, `PagamentoConfirmado` |
+
+---
+
+## Saga Pattern: coreografia
+
+A Saga da OS é **coreografada**: não existe orquestrador. Cada serviço reage a eventos e publica
+o resultado do seu passo; as falhas disparam compensações nos serviços que já agiram. Decisão e
+alternativas na [ADR 005](adr/005-saga-coreografada.md); máquina de estados e compensações em
+[saga.md](saga.md).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OS as OS Service
+    participant BI as Billing
+    participant IN as Inventory
+    participant EX as Execution
+
+    OS-->>BI: DiagnosticoConcluido
+    OS-->>EX: DiagnosticoConcluido (tarefas planejadas)
+    BI-->>OS: OrcamentoGerado
+    Note over BI: cliente aprova o orçamento
+    BI-->>IN: OrcamentoAprovado
+    IN-->>BI: EstoqueBaixado
+    BI-->>OS: CobrancaCriada (link do Mercado Pago)
+    Note over BI: webhook do Mercado Pago
+    BI-->>OS: PagamentoConfirmado
+    BI-->>EX: PagamentoConfirmado (entra na fila)
+    EX-->>OS: ExecucaoIniciada
+    EX-->>OS: ExecucaoConcluida → OS FINALIZADA
+
+    Note over OS,EX: Falha na execução (compensação)
+    EX-->>IN: ExecucaoFalhou → estorna insumos (EstoqueEstornado)
+    EX-->>BI: ExecucaoFalhou → reembolsa no Mercado Pago (PagamentoEstornado)
+    EX-->>OS: ExecucaoFalhou → OS CANCELADA
+```
+
+**Por que coreografia:** são quatro serviços com passos bem definidos e cada um já é dono da sua
+regra (o billing decide sobre pagamento, o inventory sobre estoque). Um orquestrador central
+concentraria regras de todos e viraria ponto único de falha e de deploy. A coreografia mantém os
+serviços independentes; o custo, que é perder a visão central do fluxo, é coberto pelo histórico
+da Saga no OS Service e pelos logs com `saga_id` no New Relic.
+
+**Garantias de consistência em todos os serviços:**
+- **Transactional outbox:** o evento é gravado na mesma transação da mudança de estado (no
+  DynamoDB, com `TransactWriteItems`) e um relay publica no SNS.
+- **Consumidor idempotente:** eventos repetidos ou fora de ordem são descartados sem erro.
+- **Compensações idempotentes:** o estorno de estoque e o reembolso só acontecem uma vez por OS.
+- **DLQ** em cada fila, com alarme no CloudWatch.
+
+---
+
+## Justificativa da divisão e das tecnologias
+
+**Divisão pelos limites do negócio.** Os serviços seguem as áreas da oficina citadas no desafio:
+atendimento e acompanhamento da OS (OS Service), orçamento e pagamento (Billing), peças e
+insumos (Inventory), produção na oficina (Execution) e cadastro de clientes (Customer). Cada um
+muda por motivos diferentes: o billing por regras de cobrança e do Mercado Pago, o inventory por
+regras de estoque, o execution pelo processo da oficina.
+
+| Tecnologia | Por quê |
+|---|---|
+| Java 25 + Spring Boot 4 | Mesma base nos serviços, que já era a da Fase 3; Clean Architecture em todos |
+| PostgreSQL (RDS) | OS, cobrança, estoque e cadastro precisam de transação ACID e restrições (baixa de estoque tudo ou nada, documento único, pagamento não duplicado) |
+| DynamoDB | Exigência de NoSQL. A execução é acessada sempre pela OS e guarda o agregado inteiro (tarefas e andamentos) num item; gerenciado e barato no Learner Lab |
+| SNS + SQS | Mensageria gerenciada da AWS: fan-out por tópico, filtro por tipo de evento, DLQ e retentativa sem operar broker |
+| Mercado Pago Checkout Pro | Exigência do desafio para pagamentos; webhook confirma o pagamento e a API faz o reembolso na compensação |
+| API Gateway + Lambda | Porta única com autenticação por CPF e autorizador JWT, já da Fase 3 |
+| EKS + Kustomize + HPA | Cada serviço com Deployment, Service e autoescala; overlays para AWS |
+| Terraform | Infraestrutura versionada em repositórios separados (cluster e mensageria, bancos, gateway) |
+| GitHub Actions | CI em todo PR (build, testes, cobertura mínima de 80% e SonarCloud) e deploy no EKS por serviço |
+| OpenTelemetry + New Relic | Mesma observabilidade da Fase 3, agora em todos os serviços da Saga |
+
+---
+
+## Diagrama de Componentes (Fase 3)
+
+O diagrama abaixo é o da Fase 3, com a aplicação monolítica, e mostra em detalhe a camada de
+borda (autenticação) e o cluster. As cores indicam qual repositório é responsável por cada
+componente.
 
 ```mermaid
 graph TB
@@ -262,25 +433,28 @@ A infraestrutura **deve** ser provisionada nesta ordem. Cada etapa depende dos o
 
 ```mermaid
 graph LR
-    A["1️⃣ oficina-infra-cluster\n(VPC, EKS, ECR)"] --> B["2️⃣ oficina-infra-database\n(RDS PostgreSQL)"]
-    B --> C["3️⃣ oficina-auth-gateway\n(API Gateway + Lambdas)"]
-    B --> D["4️⃣ oficina-app-api\n(kubectl apply)"]
+    A["1️⃣ oficina-infra-cluster\n(VPC, EKS, ECR, SNS/SQS)"] --> B["2️⃣ oficina-infra-database\n(RDS PostgreSQL, DynamoDB)"]
+    B --> S["3️⃣ Serviços da Saga\n(execution, billing, inventory)"]
+    S --> D["4️⃣ oficina-app-api\n(OS Service)"]
+    B --> C["5️⃣ oficina-auth-gateway\n(API Gateway + Lambdas)"]
     C -.->|"Proxy HTTP"| D
 
     style A fill:#4361ee,color:#fff
     style B fill:#3a0ca3,color:#fff
+    style S fill:#f72585,color:#fff
     style C fill:#7209b7,color:#fff
     style D fill:#f72585,color:#fff
 ```
 
-| Passo | Repo | Comando | Tempo | Depende de |
-|---|---|---|---|---|
-| 1 | `oficina-infra-cluster` | `terraform apply` | ~10-15 min | Bucket S3 criado |
-| 2 | `oficina-infra-database` | `terraform apply` | ~10-15 min | Passo 1 concluído |
-| 3 | `oficina-auth-gateway` | GitHub Actions (CD) | ~3-5 min | Passos 1 e 2 concluídos |
-| 4 | `oficina-app-api` | `kubectl apply -k k8s/overlays/aws` | ~2-3 min | Passos 1 e 2 concluídos |
+| Passo | Repo | Como | Depende de |
+|---|---|---|---|
+| 1 | `oficina-infra-cluster` | `terraform apply` (~10-15 min) | Bucket S3 do state |
+| 2 | `oficina-infra-database` | `terraform apply` (~10-15 min) | Passo 1 |
+| 3 | `oficina-execution-service`, `oficina-billing-service`, `oficina-inventory-service` | workflow `deploy.yml` de cada repositório (build, imagem no ECR e `kubectl apply`) | Passos 1 e 2 |
+| 4 | `oficina-app-api` | workflow `deploy.yml` | Passo 3: a OS depende dos eventos do execution |
+| 5 | `oficina-auth-gateway` | GitHub Actions (CD), com as URLs dos LoadBalancers dos serviços | Passos 1 a 4 |
 
-> ⚠️ A destruição deve ser feita na **ordem inversa** (4 → 3 → 2 → 1).
+> ⚠️ A destruição deve ser feita na **ordem inversa**.
 
 ---
 

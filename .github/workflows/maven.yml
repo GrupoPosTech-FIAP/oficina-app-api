@@ -1,11 +1,3 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: CI pipeline
 
 # Situações em que o workflow deve ser executado
@@ -20,20 +12,48 @@ jobs:
 
     # Define configurações para a run como distro, tempo máximo executando e permissões
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: write
+      pull-requests: read
+    env:
+      # secret da organização; sem ele (ex.: PR de fork) a análise do SonarCloud é pulada
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4 # faz o checkout do código para a máquina virtual
+      with:
+        fetch-depth: 0 # o Sonar usa o histórico completo para identificar o código novo
     - name: Set up JDK 25 # configura o JDK na máquina virtual
       uses: actions/setup-java@v4
       with:
         java-version: '25'
         distribution: 'temurin'
         cache: maven
-    - name: Build with Maven # roda o build e os testes usando o Maven Wrapper (garantindo a versão correta)
+
+    - name: Build e testes (unitários, integração e BDD) # usa o Maven Wrapper para garantir a versão correta
       run: ./mvnw -B verify --file pom.xml
+
+    # Cobertura dos quatro módulos juntos: os testes de integração do oficina-infrastructure também exercitam
+    # domínio e adapters, então o mínimo vale para o relatório agregado do JaCoCo
+    - name: Cobertura mínima de 80%
+      run: |
+        awk -F, 'NR>1 {perdidas+=$8; cobertas+=$9}
+          END {p = 100*cobertas/(perdidas+cobertas);
+               printf "Cobertura de linhas (agregada): %.1f%% (%d de %d)\n", p, cobertas, perdidas+cobertas;
+               if (p < 80) { print "::error::Cobertura abaixo de 80%"; exit 1 }}' \
+          oficina-infrastructure/target/site/jacoco-aggregate/jacoco.csv | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Análise de qualidade (SonarCloud)
+      if: ${{ env.SONAR_TOKEN != '' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # quality gate reprovado falha o build
+      run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar -Dsonar.qualitygate.wait=true
+
+    - name: SonarCloud não configurado
+      if: ${{ env.SONAR_TOKEN == '' }}
+      run: echo "::warning::Secret SONAR_TOKEN ausente; análise do SonarCloud pulada."
 
     # Lista as dependências do projeto para o GitHub analisar e mostrar no Security tab do repositório
     - name: Update dependency graph

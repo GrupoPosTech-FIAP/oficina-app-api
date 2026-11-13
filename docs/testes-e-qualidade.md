@@ -77,14 +77,33 @@ done
 ## Cobertura de testes (JaCoCo)
 
 ```bash
-mvn clean test jacoco:report
+./mvnw clean verify
 ```
+
+O JaCoCo roda em todos os módulos e o `oficina-infrastructure` junta tudo num relatório agregado
+(`oficina-infrastructure/target/site/jacoco-aggregate/index.html`). O agregado é a medida que vale,
+porque os testes de integração e o BDD do `oficina-infrastructure` também exercitam domínio,
+aplicação e adapters. O CI reprova o build se a cobertura agregada de linhas ficar abaixo de
+**80%** e escreve o percentual no resumo da execução. Hoje: **94,5%**.
+
+| Módulo | Cobertura de linhas no agregado |
+|---|---|
+| `oficina-domain` | 92,2% |
+| `oficina-application` | 98,4% |
+| `oficina-adapters` | 93,3% |
+| `oficina-infrastructure` | 100% |
 
 ![Relatório JaCoCo](assets/report_jacoco.png)
 
-## Análise de qualidade e segurança (SonarQube)
+## Análise de qualidade (SonarCloud)
 
-Suba o SonarQube local:
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=GrupoPosTech-FIAP_oficina-app-api&metric=alert_status)](https://sonarcloud.io/summary/overall?id=GrupoPosTech-FIAP_oficina-app-api) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=GrupoPosTech-FIAP_oficina-app-api&metric=coverage)](https://sonarcloud.io/component_measures?id=GrupoPosTech-FIAP_oficina-app-api&metric=coverage)
+
+O CI ([`maven.yml`](../.github/workflows/maven.yml)) envia a análise e a cobertura agregada para o
+[SonarCloud](https://sonarcloud.io/summary/overall?id=GrupoPosTech-FIAP_oficina-app-api) e falha se o
+quality gate reprovar. A análise roda quando o secret `SONAR_TOKEN` existe na organização do GitHub.
+
+Para rodar um SonarQube local:
 
 ```bash
 docker run -d --name sonarqube -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true -p 9000:9000 sonarqube:latest

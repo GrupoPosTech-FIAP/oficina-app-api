@@ -1,12 +1,12 @@
 # ConfigMap é usado para armazenar dados de configuração não sensíveis, como URLs, nomes de usuário, etc. Ele é útil para separar a configuração do código da aplicação, permitindo que você altere a configuração sem precisar reconstruir a imagem do contêiner. Para criar um ConfigMap, você pode usar o seguinte comando:
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-config
 data:
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/oficina_db
   SPRING_DATASOURCE_USERNAME: postgres
   SPRING_PROFILES_ACTIVE: prod
-kind: ConfigMap
-metadata:
-  name: oficina-config
   # Observabilidade (ADR 002 da app-api): agente OpenTelemetry exportando por OTLP para o New Relic.
   # A license key (OTEL_EXPORTER_OTLP_HEADERS) e o liga/desliga (OTEL_SDK_DISABLED) vêm do Secret.
   OTEL_SERVICE_NAME: oficina-api
